@@ -1,0 +1,34 @@
+# FindPlayer default config
+
+# this will be used to store player locations when they go offline.
+# if 'none' is selected then only online players' locations will be retrievable.
+# options are mysql, json or none
+player-logging-type: json
+
+# these next 4 fields are only required if configured with mysql above
+mysql-hostname: ""
+mysql-database: ""
+mysql-username: ""
+mysql-password: ""
+
+verbose-logging: false
+
+# WorldGuard integration is supported.  If installed the region(s) the target player is within will be shown.
+# The WG region placeholder is {WorldGuardRegion}
+
+player-online-message: "{Aqua}Player {PlayerName} coords are: {Blue}{X}, {Y}, {Z}, in: {World}{RegionMessage}"
+
+player-offline-message: "{Aqua}Player {PlayerName} (offline) coords were: {Blue}{X}, {Y}, {Z}, in: {World}{RegionMessage}, last seen: {LastSeen}"
+
+# this is an optional message that will be available via the placeholder {RegionMessage}
+worldguard-region-message: " in region: {WorldGuardRegion}"
+
+# here are all the available color placeholders for use in messages:
+# {AQUA} {BLACK} {BLUE} {DARK_AQUA} {DARK_BLUE} {DARK_GRAY} {DARK_GREEN} {DARK_PURPLE} {DARK_RED}
+# {GOLD} {GRAY} {GREEN} {LIGHT_PURPLE} {MAGIC} {RED} {WHITE} {YELLOW}
+#
+# available text modifier placeholders for use in messages:
+# {BOLD} {ITALIC} {RESET} {STRIKETHROUGH} {UNDERLINE}
+#
+# in-game placeholders:
+# {PlayerName} {World} {X} {Y} {Z} {LastSeen} {RegionMessage} {WorldGuardRegion}
