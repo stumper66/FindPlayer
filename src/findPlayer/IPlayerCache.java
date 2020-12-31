@@ -10,4 +10,12 @@ public interface IPlayerCache {
 	PlayerStoreInfo GetPlayerInfo(UUID userId);
 	
 	void PopulateData();
+	
+	void PurgeData();
+	
+	void Close();
+	
+	void UpdateDebug(Boolean useDebug);
+	
+	void UpdateFileWriteTime(long fileWriteTimeMs);
 }

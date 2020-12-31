@@ -2,7 +2,7 @@
 
 # this will be used to store player locations when they go offline.
 # if 'none' is selected then only online players' locations will be retrievable.
-# options are mysql, json or none
+# options are mysql, sqlite, json or none
 player-logging-type: json
 
 # these next 4 fields are only required if configured with mysql above
@@ -11,7 +11,10 @@ mysql-database: ""
 mysql-username: ""
 mysql-password: ""
 
-verbose-logging: false
+# json only, how often to write to disk. It caches player information and writes only when there are changes 
+json-write-time-ms: 5000 # by default will write every 5 seconds
+
+debug: false
 
 # WorldGuard integration is supported.  If installed the region(s) the target player is within will be shown.
 # The WG region placeholder is {WorldGuardRegion}

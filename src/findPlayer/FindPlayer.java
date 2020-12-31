@@ -8,7 +8,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.ChatColor;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import org.bukkit.command.Command;
@@ -21,7 +23,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	private final Logger logger = Logger.getLogger("Minecraft");
 	public FileConfiguration config;
 	private LoggingType loggingType = LoggingType.None;
-	public Boolean UseVerboseLogging;
+	public Boolean useDebug;
 	private IPlayerCache playerCache;
 	private String playerOnlinePreformedString;
 	private String playerOfflinePreformedString;
@@ -35,16 +37,15 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		config = getConfig();
 		
 		this.hasWorldGuard = WorldGuardStuff.CheckForWorldGuard();
-		processConfig(false);
+		processConfig(null);
 		playerCache.PopulateData();
-		
-		
+			
 		this.getCommand("findp").setExecutor(this);
 		getServer().getPluginManager().registerEvents(this, this);
 		
 		PluginDescriptionFile pdf = this.getDescription();
 			
-		logger.info("Has WorldGuard: " + this.hasWorldGuard.toString());
+		if (this.useDebug) logger.info("Has WorldGuard: " + this.hasWorldGuard.toString());
 		String msg = String.format("%s (%s) has been enabled", pdf.getName(), pdf.getVersion());
 		logger.info(msg);
 	}
@@ -52,7 +53,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	@Override
 	public void onDisable() {
 		PluginDescriptionFile pdf = this.getDescription();
-		logger.info(pdf.getName() + " has been disabled");
+		if (this.useDebug) logger.info(pdf.getName() + " has been disabled");
 	}
 	
 	@Override
@@ -60,25 +61,51 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		if (cmd.getName().equalsIgnoreCase("findp")) {
           	if(args.length == 1) {
           		if (args[0].equalsIgnoreCase("reload")) {
+          			if (!sender.hasPermission("FindPlayer.reload")) {
+          				sender.sendMessage(ChatColor.RED + "You don't have permisisons for this command");
+          				return true;
+          			}
+          			
           			saveDefaultConfig();
           			this.reloadConfig();
           			config = getConfig();
-          			processConfig(true);
-          			sender.sendMessage(ChatColor.YELLOW + "Reloaded the config.");	
+          			processConfig(sender);
+          			sender.sendMessage(ChatColor.YELLOW + "Reloaded the config.");
           		}
-          		else if (args[0].equalsIgnoreCase("test")) {
-          			// not used right now
+          		else if (args[0].equalsIgnoreCase("purge")) {
+          			if (!sender.hasPermission("FindPlayer.purge")) {
+          				sender.sendMessage(ChatColor.RED + "You don't have permisisons for this command");
+          				return true;
+          			}
+          			playerCache.PurgeData();
+          			sender.sendMessage(ChatColor.YELLOW + "Purged all cached data.");
           		}
           		else {
           			String SendMsg = getMessageForPlayer(args[0]);
           			sender.sendMessage(SendMsg);
           		}
            	} else {
-           		sender.sendMessage(ChatColor.YELLOW + "Usage: /findp PlayerName|reload");
+           		ChatColor g = ChatColor.GREEN;
+           		ChatColor y = ChatColor.YELLOW;
+           		sender.sendMessage(y + "Usage: /findp PlayerName" + g + "|" + y + "reload" + g + "|" + y + "purge");
            	}
         }
 		
 		return true;
+	}
+	
+	@EventHandler
+	public void onPlayerQuit(PlayerQuitEvent event){
+		if (this.loggingType == LoggingType.None) return;
+		
+		Player p = event.getPlayer();
+		if (p == null) return;
+		Location loc = p.getLocation();
+		  
+		PlayerStoreInfo psi = new PlayerStoreInfo(p.getUniqueId(), p.getName(), 
+					p.getWorld().getName(), loc);
+		
+		playerCache.AddOrUpdatePlayerInfo(psi);
 	}
 	
 	private String getMessageForPlayer(String playerName) {
@@ -108,38 +135,57 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		return formulateMessage(this.playerOfflinePreformedString, psi, null, this.hasWorldGuard);
 	}
 		
-	private void processConfig(Boolean isReload) {
-		this.UseVerboseLogging = config.getBoolean("verbose-logging", false);
+	private void processConfig(CommandSender sender) {
+		this.useDebug = config.getBoolean("debug", false);
+		long writeTimeMs = config.getLong("json-write-time-ms", 5000L);
+		String loggingType = config.getString("player-logging-type");
+		if (Helpers.isNullOrEmpty(loggingType)) loggingType = "json";
+		
+		Boolean isReload = (sender != null);
 		
 		if (!isReload) {
 			// can only change this by restarting server
-			String loggingType = config.getString("player-logging-type");
-			if (Helpers.isNullOrEmpty(loggingType)) loggingType = "json";
 			
 			switch (loggingType.toLowerCase()) {
 				case "mysql":
 					this.loggingType = LoggingType.Mysql;
-					PlayerCache_SQL.SQL_ConfigInfo sconfig = new PlayerCache_SQL.SQL_ConfigInfo();
+					PlayerCache_SQL.MySQL_ConfigInfo sconfig = new PlayerCache_SQL.MySQL_ConfigInfo();
 					sconfig.database = config.getString("mysql-database");
 					sconfig.hostname = config.getString("mysql-hostname");
 					sconfig.username = config.getString("mysql-username");
 					sconfig.password = config.getString("mysql-password");
 					
-					PlayerCache_SQL sql = new PlayerCache_SQL(sconfig);
-					playerCache = sql;
-					if (!sql.openConnection())
-						logger.warning("Unable to open mysql connection");
+					PlayerCache_SQL mysql = new PlayerCache_SQL(sconfig, useDebug);
+					playerCache = mysql;
+					mysql.openConnection();
+					break;
+				case "sqlite":
+					this.loggingType = LoggingType.Sqlite;
+					PlayerCache_SQL sqlite = new PlayerCache_SQL(this.getDataFolder(), useDebug);
+					playerCache = sqlite;
+					sqlite.openConnection();
 					break;
 				case "json":
 					this.loggingType = LoggingType.Json;
-					playerCache = new PlayerCache_Json(this.getDataFolder());
+					playerCache = new PlayerCache_Json(this.getDataFolder(), writeTimeMs, useDebug);
 					break;
 				default: 
 					this.loggingType = LoggingType.None;
 					break;
 			}
 			
-			if (this.UseVerboseLogging) logger.info("Using logging type of " + this.loggingType.toString());
+			if (this.useDebug) logger.info("Using logging type of " + this.loggingType.toString());
+		}
+		else {
+			// is reload
+			if (playerCache != null) {
+				playerCache.UpdateDebug(useDebug);
+				playerCache.UpdateFileWriteTime(writeTimeMs);
+			}
+			
+			if (this.loggingType.toString().toLowerCase() != loggingType) {
+				sender.sendMessage(ChatColor.RED + "Warning! You must restart the server to change the logging type.");
+			}
 		}
 		
 		String[] PreformedMessages = new String[] {
@@ -262,6 +308,6 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	}
 	
 	private enum LoggingType{
-		None, Json, Mysql
+		None, Json, Mysql, Sqlite
 	}
 }

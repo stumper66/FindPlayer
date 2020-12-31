@@ -1,5 +1,6 @@
 package findPlayer;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -14,7 +15,8 @@ public class PlayerCache_Base {
 	
 	public final Logger logger;
 	public HashMap<UUID, PlayerStoreInfo> Mapping;
-	public TreeMap<String, UUID> NameMappings;
+	public final TreeMap<String, UUID> NameMappings;
+	public File dataFile;
 	
 	public PlayerStoreInfo GetPlayerInfo(String Playername) {
 		if (!NameMappings.containsKey(Playername)) return null;
