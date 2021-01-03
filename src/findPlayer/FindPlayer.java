@@ -62,7 +62,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
           	if(args.length == 1) {
           		if (args[0].equalsIgnoreCase("reload")) {
           			if (!sender.hasPermission("FindPlayer.reload")) {
-          				sender.sendMessage(ChatColor.RED + "You don't have permisisons for this command");
+          				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
           				return true;
           			}
           			
@@ -74,7 +74,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
           		}
           		else if (args[0].equalsIgnoreCase("purge")) {
           			if (!sender.hasPermission("FindPlayer.purge")) {
-          				sender.sendMessage(ChatColor.RED + "You don't have permisisons for this command");
+          				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
           				return true;
           			}
           			playerCache.PurgeData();
@@ -253,9 +253,10 @@ public class FindPlayer extends JavaPlugin implements Listener {
 
 		if (doCheckWG) {
 			this.WG_RegionPostformedString = formulateMessage(this.WG_RegionPreformedString, psi, l, false);
-			v.put("{RegionMessage}", this.WG_RegionPostformedString); 
+			v.put("{RegionMessage}", this.WG_RegionPostformedString);
 		}
-		
+
+		if (!this.hasWorldGuard) v.put("{RegionMessage}", "");
 		v.put("{WorldGuardRegion}", WG_Region);
 		
 		String formedStr = str;

@@ -1,6 +1,6 @@
 name: FindPlayer
 main: findPlayer.FindPlayer
-version: 1.0
+version: 1.0.1
 authors:
     - PenalBuffalo
 api-version: 1.13
