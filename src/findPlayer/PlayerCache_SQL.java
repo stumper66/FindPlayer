@@ -9,18 +9,20 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.sql.PreparedStatement;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
-	public PlayerCache_SQL(MySQL_ConfigInfo config, Boolean debugEnabled) {
+	public PlayerCache_SQL(final MySQL_ConfigInfo config, final boolean debugEnabled) {
 		// since this constructor was used we are using mysql
 		this.useDebug = debugEnabled;
 		this.config = config;
 		this.isSqlLite = false;
 	}
 	
-	public PlayerCache_SQL(File dataDirectory, Boolean debugEnabled) {
+	public PlayerCache_SQL(final File dataDirectory, final boolean debugEnabled) {
 		// if no constructor is used, then this is sqlite
 		this.useDebug = debugEnabled;
 		this.isSqlLite = true;
@@ -30,24 +32,23 @@ public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
 	
 	private MySQL_ConfigInfo config;
 	private Connection connection;
-	private Boolean isReady = false;
-	private Boolean writerIsWorking;
-	private final int port = 3306;
+	private boolean isReady = false;
+	private boolean writerIsWorking;
 	private WriterClass writer;
-	private Boolean useDebug;
-	private final Boolean isSqlLite;
+	private boolean useDebug;
+	private final boolean isSqlLite;
 	private String whichSQL = "mysql";
 	
-	public Boolean openConnection() {
+	public void openConnection() {
 	    try {
-			if (connection != null && !connection.isClosed()) return true;
+			if (connection != null && !connection.isClosed()) return;
 		} catch (SQLException e) {
-			logger.warning("Error checking " + whichSQL + " connection. " + e.getMessage());
-			return false;
+			Helpers.logger.warning("Error checking " + whichSQL + " connection. " + e.getMessage());
+			return;
 		}
 		
 	    String connString = null;
-	    String createStatement = null;
+	    String createStatement;
 	    
 	    if (this.isSqlLite) {
 			createStatement = "CREATE TABLE IF NOT EXISTS \"playerLocations\" ("
@@ -71,10 +72,11 @@ public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
 	        		+ "lastSeen TIMESTAMP,"
 	        		+ "wgRegions VARCHAR(255)"
 	        		+ ");";
-	    	
+
+			final int port = 3306;
 			connString = String.format(
 					"jdbc:mysql://%s:%s/%s?useSSL=false",
-					config.hostname, this.port, config.database);
+					config.hostname, port, config.database);
 	    }
 		
 	    try {
@@ -86,28 +88,26 @@ public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
 		        connection = DriverManager.getConnection(connString, config.username, config.password);	    		
 	    	}
 	    } catch (Exception e) {
-	        logger.warning("Unable to open " + whichSQL + ". " + e.getMessage());
-	        return false;
+			Helpers.logger.warning("Unable to open " + whichSQL + ". " + e.getMessage());
+	        return;
 	    }
 	    
 	    try {    
 	        openConnection();
-	        Statement statement = connection.createStatement();
+	        final Statement statement = connection.createStatement();
 	        statement.execute(createStatement);
 	    } catch (SQLException e) {
-	        logger.warning("Error executing " + whichSQL +" query. " + e.getMessage());
-	        return false;
+			Helpers.logger.warning("Error executing " + whichSQL +" query. " + e.getMessage());
+	        return;
 	    }
 	    
 	    writerIsWorking = true;
 	    writer = new WriterClass();
-	    Thread thread = new Thread(writer);
+	    final Thread thread = new Thread(writer);
 	    thread.start();
-	    
-	    return true;
 	}
 	
-	public void Close(){
+	public void close(){
 		if (writer != null && writerIsWorking) {
 			writer.doLoop = false;
 			// wait up to 100 milliseconds to complete
@@ -117,132 +117,126 @@ public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
 					if (!writerIsWorking) break;
 				}
 			}
-			catch (InterruptedException e) { }
+			catch (InterruptedException ignored) { }
 		}
 		
 		try {
 			if (connection != null && !connection.isClosed())
 				connection.close();
-		} catch(SQLException e) { }
+		} catch(SQLException ignored) { }
 	}
 	
-	public void UpdateDebug(Boolean useDebug) {
+	public void updateDebug(final boolean useDebug) {
 		this.useDebug = useDebug;
 	}
-	
-	public void UpdateFileWriteTime(long fileWriteTimeMs) {
-		// not used in this class
-	}
-	
-	public void PurgeData() {
-		if (writer != null) writer.PurgeQueue();
-		this.Mapping.clear();
-		this.NameMappings.clear();
+
+	public void purgeData() {
+		if (writer != null) writer.purgeQueue();
+		this.mapping.clear();
+		this.nameMappings.clear();
 		
 		try {
-			Statement query = connection.createStatement();
+			final Statement query = connection.createStatement();
 			query.execute("DELETE FROM playerLocations");
 		}
 		catch (SQLException e) {
-			logger.warning("Error deleting from " + whichSQL + ". " + e.getMessage());
+			Helpers.logger.warning("Error deleting from " + whichSQL + ". " + e.getMessage());
 		}
 	}
 
-	public void AddOrUpdatePlayerInfo(PlayerStoreInfo psi) {
+	public void addOrUpdatePlayerInfo(final PlayerStoreInfo psi) {
 		if (!isReady) return;
 
 		psi.lastOnline = LocalDateTime.now();
 		writer.addItem(psi);
 	}
 	
-	public PlayerStoreInfo GetPlayerInfo(String playerName) {
+	public PlayerStoreInfo getPlayerInfo(final String playername) {
 		if (!isReady) return null;
 		
-		return QueryDB(null, playerName);
+		return queryDB(null, playername);
 	}
 	
-	public PlayerStoreInfo GetPlayerInfo(UUID userId) {
+	public PlayerStoreInfo getPlayerInfo(final UUID userId) {
 		if (!isReady) return null;
 		
-		return QueryDB(userId.toString(), null);
+		return queryDB(userId.toString(), null);
 	}
 	
-	private PlayerStoreInfo QueryDB(String userId, String playerName) {
+	private PlayerStoreInfo queryDB(String userId, String playerName) {
 		//                          1        2            3           4          5          6           7         8
-		String queryPre = "SELECT userId, playerName, locationX, locationY, locationZ, playerWorld, lastSeen, wgRegions " +
+		final String queryPre = "SELECT userId, playerName, locationX, locationY, locationZ, playerWorld, lastSeen, wgRegions " +
 						"FROM playerLocations WHERE ";
-		String queryId  = "userId = ?";
-		String queryPlayer  = "playerName = ?";
-		String queryMain = null;
-		Boolean useId = false;
+		final String queryId  = "userId = ?";
+		final String queryPlayer  = "playerName = ?";
+		String queryMain;
+		boolean useId = false;
 		
 		if (Helpers.isNullOrEmpty(playerName)) {
 			queryMain = queryPre + queryId;
 			useId = true;
 		}
-		else {
+		else
 			queryMain = queryPre + queryPlayer;
-		}
 		
 		try {
-			PreparedStatement query = connection.prepareStatement(queryMain);
+			final PreparedStatement query = connection.prepareStatement(queryMain);
 			if (useId)
 				query.setString(1, userId);
 			else
 				query.setString(1, playerName);
 		
-			ResultSet result = query.executeQuery();
+			final ResultSet result = query.executeQuery();
 			if (!result.next()) return null;
-			
-			PlayerStoreInfo psi = getPlayerInfoFromQuery(result);
-			
-			return psi;
+
+			return getPlayerInfoFromQuery(result);
 		}
 		catch (SQLException e) {
-			logger.warning("Error querying " + whichSQL + ". " + e.getMessage());
+			Helpers.logger.warning("Error querying " + whichSQL + ". " + e.getMessage());
 		}
 		
 		return null;
 	}
 	
-	public void PopulateData() {
+	public void populateData() {
 		try {
-			Statement query = connection.createStatement();
-			ResultSet result = query.executeQuery("SELECT userId, playerName, locationX, locationY, locationZ, playerWorld, lastSeen, wgRegions " +
+			final Statement query = connection.createStatement();
+			final ResultSet result = query.executeQuery("SELECT userId, playerName, locationX, locationY, locationZ, playerWorld, lastSeen, wgRegions " +
 					"FROM playerLocations");
 			
 			while (result.next()) {
-				PlayerStoreInfo psi = getPlayerInfoFromQuery(result);
-				
-				this.Mapping.put(psi.userId, psi);
+				final PlayerStoreInfo psi = getPlayerInfoFromQuery(result);
+				this.mapping.put(psi.userId, psi);
 			}
 		}
 		catch (SQLException e) {
-			logger.warning("Unable to query " + whichSQL + "." + e.getMessage());
+			Helpers.logger.warning("Unable to query " + whichSQL + "." + e.getMessage());
 			if (writer != null) writer.doLoop = false;
 			isReady = false;
 			return;
 		}
-		
-		this.Mapping.forEach((k,v) -> {
-			NameMappings.put(v.playerName, k);
-		});
-		
-		if (useDebug) logger.info("items count: " + Mapping.size() + ", name mappings: " + NameMappings.size());
+
+		for (final Map.Entry<UUID, PlayerStoreInfo> entry : this.mapping.entrySet()) {
+			final UUID k = entry.getKey();
+			final PlayerStoreInfo v = entry.getValue();
+			nameMappings.put(v.playerName, k);
+		}
+
+		if (useDebug) Helpers.logger.info("items count: " + mapping.size() + ", name mappings: " + nameMappings.size());
 	}
 	
-	private PlayerStoreInfo getPlayerInfoFromQuery(ResultSet result) throws SQLException {
-		UUID id = UUID.fromString(result.getString(1));
-		PlayerStoreInfo psi = new PlayerStoreInfo(id);
+	private PlayerStoreInfo getPlayerInfoFromQuery(final ResultSet result) throws SQLException {
+		final UUID id = UUID.fromString(result.getString(1));
+		final PlayerStoreInfo psi = new PlayerStoreInfo(id);
 		psi.playerName = result.getString(2);
 		psi.locationX = result.getInt(3);
 		psi.locationY = result.getInt(4);
 		psi.locationZ = result.getInt(5);
 		psi.worldName = result.getString(6);
-		if (this.isSqlLite) {
+		if (this.isSqlLite)
 			psi.lastOnline = LocalDateTime.parse(result.getString(7));
-		} else {
-			Timestamp ts = (Timestamp)result.getObject(7);
+		else {
+			final Timestamp ts = (Timestamp)result.getObject(7);
 			psi.lastOnline = ts.toLocalDateTime();			
 		}
 
@@ -252,29 +246,20 @@ public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
 	}
 	
 	private class WriterClass implements Runnable{
-		
-		private PreparedStatement statement;
-		private volatile Boolean hasWork = false;
-		public Boolean doLoop = true;
-		private ConcurrentLinkedQueue<PlayerStoreInfo> queue;
-		private final Object lockObj = new Object();
-		
-		public void addItem(PlayerStoreInfo psi) {
-			synchronized(lockObj) {
-				queue.add(psi);
-				hasWork = true;
-			}
+
+		public boolean doLoop = true;
+		private LinkedBlockingQueue<PlayerStoreInfo> queue;
+
+		public void addItem(final PlayerStoreInfo psi) {
+			queue.add(psi);
 		}
 		
-		public void PurgeQueue() {
-			synchronized(lockObj) {
-				queue.clear();
-				hasWork = false;
-			}
+		public void purgeQueue() {
+			queue.clear();
 		}
 		
 		public void run() {
-			queue = new ConcurrentLinkedQueue<PlayerStoreInfo>();
+			queue = new LinkedBlockingQueue<>();
 			
 			//                                                1       2           3          4           5          6            7          8
 			String cmdText = "INSERT INTO playerLocations (userId, playerName, locationX, locationY, locationZ, playerWorld, lastSeen, wgRegions)"
@@ -285,75 +270,63 @@ public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
 					  //            14             15
 					  ", lastSeen = ?, wgRegions = ?";
 			
-			if (isSqlLite) {
+			if (isSqlLite)
 				cmdText = cmdText.replace("ON DUPLICATE KEY UPDATE", "ON CONFLICT(userId) DO UPDATE SET");
-			}
-			
+
+			PreparedStatement statement;
 			try {
 				statement = connection.prepareStatement(cmdText);
 			}
 			catch (SQLException e) {
-				logger.warning("Error creating SQL writer statement. " + e.getMessage());
+				Helpers.logger.warning("Error creating SQL writer statement. " + e.getMessage());
 				return;
 			}
 			
 			isReady = true;
-			if (useDebug) logger.info("sql ready for updates");
+			if (useDebug) Helpers.logger.info("sql ready for updates");
 			
 			try {
 				// --------------------- begin writer loop -----------------------
 				while (doLoop) {
-					if (!hasWork) {
-						Thread.sleep(10);
-						continue;
-					}
-					// loop above here if no work
-				
-					if (useDebug) logger.info("writer queue has work");
-					
-					PlayerStoreInfo item = null;
-				
-					synchronized(lockObj) {
-						item = queue.poll();
-						hasWork = !queue.isEmpty();
-					}
-
+					final PlayerStoreInfo item = queue.poll(200, TimeUnit.MILLISECONDS);
 					if (item == null) continue;
-				
-					// has a valid item needing to write to SQL
-					statement.setString(1, item.userId.toString());
-					statement.setString(2, item.playerName);
-					statement.setInt(3, item.locationX);
-					statement.setInt(4, item.locationY);
-					statement.setInt(5, item.locationZ);
-					statement.setString(6, item.worldName);
-					if (isSqlLite) statement.setString(7, item.lastOnline.toString());
-					else statement.setObject(7, item.lastOnline);
-					statement.setString(8, item.regionNames);
-					
-					// now (mostly) duplicate the values for the update statement (good old java eh?)
-					statement.setString(9, item.playerName);
-					statement.setInt(10, item.locationX);
-					statement.setInt(11, item.locationY);
-					statement.setInt(12, item.locationZ);
-					statement.setString(13, item.worldName);
-					if (isSqlLite) statement.setString(14, item.lastOnline.toString());
-					else statement.setObject(14, item.lastOnline);
-					statement.setString(15, item.regionNames);
-					
-					statement.execute();
-					if (useDebug) logger.info("inserted or updated entry to sql");
+
+					processItem(item, statement);
 				}
 				// 	--------------------- end writer loop ----------------------
 			}
-			catch (SQLException e) {
-				logger.warning("Error updating SQL (writer queue). " + e.getMessage());
+			catch (SQLException | InterruptedException e) {
+				Helpers.logger.warning("Error updating SQL (writer queue). " + e.getMessage());
 			}
-			catch (InterruptedException e) {
-				return;
-			}
-			
-		} // end run 
+		} // end run
+	}
+
+	private void processItem(final PlayerStoreInfo item, final PreparedStatement statement) throws SQLException {
+		if (useDebug) Helpers.logger.info("writer queue has work");
+
+		// has a valid item needing to write to SQL
+		statement.setString(1, item.userId.toString());
+		statement.setString(2, item.playerName);
+		statement.setInt(3, item.locationX);
+		statement.setInt(4, item.locationY);
+		statement.setInt(5, item.locationZ);
+		statement.setString(6, item.worldName);
+		if (isSqlLite) statement.setString(7, item.lastOnline.toString());
+		else statement.setObject(7, item.lastOnline);
+		statement.setString(8, item.regionNames);
+
+		// now (mostly) duplicate the values for the update statement (good old java eh?)
+		statement.setString(9, item.playerName);
+		statement.setInt(10, item.locationX);
+		statement.setInt(11, item.locationY);
+		statement.setInt(12, item.locationZ);
+		statement.setString(13, item.worldName);
+		if (isSqlLite) statement.setString(14, item.lastOnline.toString());
+		else statement.setObject(14, item.lastOnline);
+		statement.setString(15, item.regionNames);
+
+		statement.execute();
+		if (useDebug) Helpers.logger.info("inserted or updated entry to sql");
 	}
 		
 	public static class MySQL_ConfigInfo{

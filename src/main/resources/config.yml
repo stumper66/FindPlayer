@@ -23,6 +23,8 @@ player-online-message: "{Aqua}Player {PlayerName} coords are: {Blue}{X}, {Y}, {Z
 
 player-offline-message: "{Aqua}Player {PlayerName} (offline) coords were: {Blue}{X}, {Y}, {Z}, in: {World}{RegionMessage}, last seen: {LastSeen}"
 
+invalid-player-message: "{Red}Player name invalid or is offline."
+
 # this is an optional message that will be available via the placeholder {RegionMessage}
 worldguard-region-message: " in region: {WorldGuardRegion}"
 

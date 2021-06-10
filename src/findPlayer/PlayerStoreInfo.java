@@ -18,17 +18,7 @@ public class PlayerStoreInfo{
 		this.locationY = l.getBlockY();
 		this.locationZ = l.getBlockZ();
 	}
-	
-	public PlayerStoreInfo(UUID userId, String playerName, String worldName, Location l, String regionNames) {
-		this.userId = userId;
-		this.playerName = playerName;
-		this.worldName = worldName;
-		this.locationX = l.getBlockX();
-		this.locationY = l.getBlockY();
-		this.locationZ = l.getBlockZ();
-		this.regionNames = regionNames;
-	}	
-	
+
 	public final UUID userId;
 	public String playerName;
 	public String worldName;

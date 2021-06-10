@@ -1,43 +1,41 @@
 package findPlayer;
 
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
+import org.bukkit.World;
+import org.jetbrains.annotations.Nullable;
 
 public class WorldGuardStuff {
-	public static Boolean CheckForWorldGuard() {
-        try {
-        	WorldGuard.getInstance();
-        } catch (NoClassDefFoundError e) {
-            return false;
-        }
-        
-        return true;
+	public static boolean CheckForWorldGuard() {
+		return Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
 	}
-	
-	public static String GetWorldGuardRegionsForLocation(Location l) {
-		com.sk89q.worldedit.world.World world = BukkitAdapter.adapt(l.getWorld());
+
+	@Nullable
+	public static String GetWorldGuardRegionsForLocation(final Location l) {
+		final World world = l.getWorld();
+		if (world == null) return null;
+
+		final com.sk89q.worldedit.world.World wg_world = BukkitAdapter.adapt(world);
+		final BlockVector3 position = BlockVector3.at(l.getBlockX(), l.getBlockY(), l.getBlockZ());
+		final RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+		final RegionManager regions = container.get(wg_world);
+		if (regions == null) return null;
 		
-		BlockVector3 position = BlockVector3.at(l.getBlockX(), l.getBlockY(), l.getBlockZ());
+		final StringBuilder sb = new StringBuilder();
 		
-		RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-		RegionManager regions = container.get(world);
-		
-		ApplicableRegionSet set = regions.getApplicableRegions(position);
-		
-		StringBuilder sb = new StringBuilder();
-		
-		set.forEach((region) -> {
-			if (sb.length() > 100) return;
-			String name = region.getId();
+		for (final ProtectedRegion region : regions.getApplicableRegions(position)) {
+			if (sb.length() > 100) return null;
 			if (sb.length() > 0) sb.append(", ");
+			final String name = region.getId();
 			sb.append(name);
-		});
+		}
 		
 		if (sb.length() > 100) {
 			sb.setLength(97);

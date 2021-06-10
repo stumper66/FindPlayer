@@ -1,14 +1,30 @@
 name: FindPlayer
 main: findPlayer.FindPlayer
-version: 1.0.1
+version: ${project.version}
 authors:
     - PenalBuffalo
 api-version: 1.13
-softdepend: [WorldGuard]
-description: Finds locations of players
+softdepend: [ WorldGuard, PlaceholderAPI ]
+description: ${project.description}
 commands:
    findp:
          description: This command returns a player's coordinates. If configured with logging it will also store player's coordinates when they are offline.
-         usage: /findp [player]
-         permission: FindPlayer.findp
-         permission-message: You don't have access to FindPlayer.findp!
+         usage: /findp [player|reload|purge]
+
+permissions:
+  findplayer.*:
+    description: 'all findplayer permissions'
+    default: op
+    children:
+      FindPlayer.findp: true
+      FindPlayer.reload: true
+      FindPlayer.purge: true
+  FindPlayer.findp:
+    description: access to /FindPlayer [playername]
+    default: op
+  FindPlayer.reload:
+    description: access to /FindPlayer reload
+    default: op
+  FindPlayer.purge:
+    description: access to /FindPlayer purge
+    default: op 

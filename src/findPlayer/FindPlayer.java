@@ -1,14 +1,15 @@
 package findPlayer;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.ChatColor;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -18,261 +19,272 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.jetbrains.annotations.NotNull;
 
 public class FindPlayer extends JavaPlugin implements Listener {
-	private final Logger logger = Logger.getLogger("Minecraft");
 	public FileConfiguration config;
-	private LoggingType loggingType = LoggingType.None;
-	public Boolean useDebug;
+	private LoggingType loggingType = LoggingType.NONE;
+	public boolean useDebug;
 	private IPlayerCache playerCache;
-	private String playerOnlinePreformedString;
-	private String playerOfflinePreformedString;
-	private String WG_RegionPreformedString;
-	private String WG_RegionPostformedString;
-	public Boolean hasWorldGuard = false;
+	@NotNull
+	private String playerOnlinePreformedString = "";
+	@NotNull
+	private String playerOfflinePreformedString = "";
+	private String wg_RegionPreformedString;
+	private String wg_RegionPostformedString;
+	public boolean hasWorldGuard = false;
 	
 	@Override
     public void onEnable() {
+		playerOnlinePreformedString = "";
 		saveDefaultConfig();
 		config = getConfig();
 		
 		this.hasWorldGuard = WorldGuardStuff.CheckForWorldGuard();
 		processConfig(null);
-		playerCache.PopulateData();
-			
-		this.getCommand("findp").setExecutor(this);
+		playerCache.populateData();
+
+		final PluginCommand cmd = this.getCommand("findp");
+		if (cmd != null) cmd.setExecutor(this);
 		getServer().getPluginManager().registerEvents(this, this);
-		
-		PluginDescriptionFile pdf = this.getDescription();
+
+		if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null)
+			new PAPI_Manager(this).register();
+
+		final PluginDescriptionFile pdf = this.getDescription();
 			
-		if (this.useDebug) logger.info("Has WorldGuard: " + this.hasWorldGuard.toString());
-		String msg = String.format("%s (%s) has been enabled", pdf.getName(), pdf.getVersion());
-		logger.info(msg);
+		if (this.useDebug) Helpers.logger.info("Has WorldGuard: " + this.hasWorldGuard);
+		final String msg = String.format("%s (%s) has been enabled", pdf.getName(), pdf.getVersion());
+		Helpers.logger.info(msg);
 	}
 	
 	@Override
 	public void onDisable() {
-		PluginDescriptionFile pdf = this.getDescription();
-		if (this.useDebug) logger.info(pdf.getName() + " has been disabled");
+		if (playerCache != null) playerCache.close();
+
+		final PluginDescriptionFile pdf = this.getDescription();
+		if (this.useDebug) Helpers.logger.info(pdf.getName() + " has been disabled");
 	}
 	
 	@Override
-	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-		if (cmd.getName().equalsIgnoreCase("findp")) {
-          	if(args.length == 1) {
-          		if (args[0].equalsIgnoreCase("reload")) {
-          			if (!sender.hasPermission("FindPlayer.reload")) {
-          				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
-          				return true;
-          			}
-          			
-          			saveDefaultConfig();
-          			this.reloadConfig();
-          			config = getConfig();
-          			processConfig(sender);
-          			sender.sendMessage(ChatColor.YELLOW + "Reloaded the config.");
-          		}
-          		else if (args[0].equalsIgnoreCase("purge")) {
-          			if (!sender.hasPermission("FindPlayer.purge")) {
-          				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
-          				return true;
-          			}
-          			playerCache.PurgeData();
-          			sender.sendMessage(ChatColor.YELLOW + "Purged all cached data.");
-          		}
-          		else {
-          			String SendMsg = getMessageForPlayer(args[0]);
-          			sender.sendMessage(SendMsg);
-          		}
-           	} else {
-           		ChatColor g = ChatColor.GREEN;
-           		ChatColor y = ChatColor.YELLOW;
-           		sender.sendMessage(y + "Usage: /findp PlayerName" + g + "|" + y + "reload" + g + "|" + y + "purge");
-           	}
-        }
-		
+	public boolean onCommand(final @NotNull CommandSender sender, final Command cmd, final @NotNull String label, final String[] args) {
+		if (!cmd.getName().equalsIgnoreCase("findp"))
+			return true;
+
+		if(args.length != 1) {
+			final ChatColor g = ChatColor.GREEN;
+			final ChatColor y = ChatColor.YELLOW;
+			sender.sendMessage(y + "Usage: /findp PlayerName" + g + "|" + y + "reload" + g + "|" + y + "purge");
+			return true;
+		}
+
+		if (args[0].equalsIgnoreCase("reload")) {
+			if (!sender.hasPermission("FindPlayer.reload")) {
+				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
+				return true;
+			}
+
+			saveDefaultConfig();
+			this.reloadConfig();
+			config = getConfig();
+			processConfig(sender);
+			sender.sendMessage(ChatColor.YELLOW + "Reloaded the config.");
+		}
+		else if (args[0].equalsIgnoreCase("purge")) {
+			if (!sender.hasPermission("FindPlayer.purge")) {
+				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
+				return true;
+			}
+			playerCache.purgeData();
+			sender.sendMessage(ChatColor.YELLOW + "Purged all cached data.");
+		}
+		else {
+			final String sendMsg = getMessageForPlayer(args[0]);
+			sender.sendMessage(sendMsg);
+		}
+
 		return true;
 	}
-	
-	@EventHandler
-	public void onPlayerQuit(PlayerQuitEvent event){
-		if (this.loggingType == LoggingType.None) return;
+
+	@EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+	public void onPlayerQuit(final PlayerQuitEvent event){
+		if (this.loggingType == LoggingType.NONE) return;
 		
-		Player p = event.getPlayer();
-		if (p == null) return;
-		Location loc = p.getLocation();
+		final Player p = event.getPlayer();
+		final Location loc = p.getLocation();
 		  
-		PlayerStoreInfo psi = new PlayerStoreInfo(p.getUniqueId(), p.getName(), 
+		final PlayerStoreInfo psi = new PlayerStoreInfo(p.getUniqueId(), p.getName(),
 					p.getWorld().getName(), loc);
 		
-		playerCache.AddOrUpdatePlayerInfo(psi);
+		playerCache.addOrUpdatePlayerInfo(psi);
 	}
-	
-	private String getMessageForPlayer(String playerName) {
+
+	@NotNull
+	public String getMessageForPlayer(final String playerName) {
 		// try to find player entity from name.  Will only work if they are online
-		Player p = Bukkit.getPlayer(playerName);
-		PlayerStoreInfo psi = null;
+		final Player p = Bukkit.getPlayer(playerName);
+		PlayerStoreInfo psi;
 		
 		if(p != null) {
 			// player is online
-			Location loc = p.getLocation();
-			psi = new PlayerStoreInfo(p.getUniqueId(), p.getName(), 
+			final Location loc = p.getLocation();
+			psi = new PlayerStoreInfo(p.getUniqueId(), p.getName(),
 				p.getWorld().getName(), loc);
 				
 			if (this.hasWorldGuard)
 				psi.regionNames = WorldGuardStuff.GetWorldGuardRegionsForLocation(loc);
 				
-			playerCache.AddOrUpdatePlayerInfo(psi);
+			playerCache.addOrUpdatePlayerInfo(psi);
 			return formulateMessage(this.playerOnlinePreformedString, psi, loc, this.hasWorldGuard);
 		}
 		
 		// player was null.  Let's see if we have the name cached
-		psi = playerCache.GetPlayerInfo(playerName);
-		if (psi == null) {
-			return ChatColor.RED.toString() + "Player name invalid or is offline.";
-		}
-		
+		psi = playerCache.getPlayerInfo(playerName);
+		if (psi == null)
+			return preformulateMessage(config.getString("invalid-player-message", ChatColor.RED + "Player name invalid or is offline."));
+
 		return formulateMessage(this.playerOfflinePreformedString, psi, null, this.hasWorldGuard);
 	}
 		
-	private void processConfig(CommandSender sender) {
+	private void processConfig(final CommandSender sender) {
 		this.useDebug = config.getBoolean("debug", false);
-		long writeTimeMs = config.getLong("json-write-time-ms", 5000L);
+		final long writeTimeMs = config.getLong("json-write-time-ms", 5000L);
 		String loggingType = config.getString("player-logging-type");
 		if (Helpers.isNullOrEmpty(loggingType)) loggingType = "json";
 		
-		Boolean isReload = (sender != null);
+		final boolean isReload = (sender != null);
 		
 		if (!isReload) {
 			// can only change this by restarting server
 			
 			switch (loggingType.toLowerCase()) {
 				case "mysql":
-					this.loggingType = LoggingType.Mysql;
-					PlayerCache_SQL.MySQL_ConfigInfo sconfig = new PlayerCache_SQL.MySQL_ConfigInfo();
+					this.loggingType = LoggingType.MYSQL;
+					final PlayerCache_SQL.MySQL_ConfigInfo sconfig = new PlayerCache_SQL.MySQL_ConfigInfo();
 					sconfig.database = config.getString("mysql-database");
 					sconfig.hostname = config.getString("mysql-hostname");
 					sconfig.username = config.getString("mysql-username");
 					sconfig.password = config.getString("mysql-password");
 					
-					PlayerCache_SQL mysql = new PlayerCache_SQL(sconfig, useDebug);
+					final PlayerCache_SQL mysql = new PlayerCache_SQL(sconfig, useDebug);
 					playerCache = mysql;
 					mysql.openConnection();
 					break;
 				case "sqlite":
-					this.loggingType = LoggingType.Sqlite;
-					PlayerCache_SQL sqlite = new PlayerCache_SQL(this.getDataFolder(), useDebug);
+					this.loggingType = LoggingType.SQLITE;
+					final PlayerCache_SQL sqlite = new PlayerCache_SQL(this.getDataFolder(), useDebug);
 					playerCache = sqlite;
 					sqlite.openConnection();
 					break;
 				case "json":
-					this.loggingType = LoggingType.Json;
+					this.loggingType = LoggingType.JSON;
 					playerCache = new PlayerCache_Json(this.getDataFolder(), writeTimeMs, useDebug);
 					break;
 				default: 
-					this.loggingType = LoggingType.None;
+					this.loggingType = LoggingType.NONE;
 					break;
 			}
 			
-			if (this.useDebug) logger.info("Using logging type of " + this.loggingType.toString());
+			if (this.useDebug) Helpers.logger.info("Using logging type of " + this.loggingType.toString());
 		}
 		else {
 			// is reload
-			if (playerCache != null) {
-				playerCache.UpdateDebug(useDebug);
-				playerCache.UpdateFileWriteTime(writeTimeMs);
-			}
+			if (playerCache != null)
+				playerCache.updateDebug(useDebug);
 			
-			if (this.loggingType.toString().toLowerCase() != loggingType) {
+			if (!this.loggingType.toString().equalsIgnoreCase(loggingType))
 				sender.sendMessage(ChatColor.RED + "Warning! You must restart the server to change the logging type.");
-			}
 		}
 		
-		String[] PreformedMessages = new String[] {
+		final String[] preformedMessages = new String[] {
 				config.getString("player-online-message", null),
 				config.getString("player-offline-message", null),
 				config.getString("worldguard-region-message", null)
 		};
 		
-		String[] DefaultMessages = new String[] {
+		final String[] defaultMessages = new String[] {
 				"{Color_Aqua}Player {PlayerName} coordinates are: {Color_Blue}{X}, {Y}, {Z}, in: {World}{Color_Blue}{RegionMessage}",
 				"{Color_Aqua}Player {PlayerName} coordinates are: {Color_Blue}{X}, {Y}, {Z}\n(in: {World}{Color_Blue})",
 				" in region: {WorldGuardRegion}"
 		};
 		
-		for (int i = 0; i < PreformedMessages.length; i++) {
+		for (int i = 0; i < preformedMessages.length; i++) {
 			if (i == 2 && !this.hasWorldGuard) {
-				this.WG_RegionPreformedString = "";
+				this.wg_RegionPreformedString = "";
 				continue;
 			}
 			
-			String temp = PreformedMessages[i];
-			if (Helpers.isNullOrEmpty(temp)) temp = DefaultMessages[i];
+			String temp = preformedMessages[i];
+			if (Helpers.isNullOrEmpty(temp)) temp = defaultMessages[i];
 			
 			temp = preformulateMessage(temp);
 			
 			switch (i) {
 				case 0: this.playerOnlinePreformedString = temp; break;
 				case 1: this.playerOfflinePreformedString = temp; break;
-				case 2: this.WG_RegionPreformedString = temp; break;
+				case 2: this.wg_RegionPreformedString = temp; break;
 			}
 		}
 		
-		this.WG_RegionPostformedString = "";
+		this.wg_RegionPostformedString = "";
 	}
-	
-	private String formulateMessage(String str, PlayerStoreInfo psi, Location l, Boolean doCheckWG) {
-		if (str == null) {
-			logger.warning("formulateMessage was called with a null string");
-			return null;
-		}
-		
-		HashMap<String, String> v = new HashMap<String, String>();
+
+	@NotNull
+	private static String truncateTimeMilliseconds(final LocalDateTime time){
+		final String timeStr = time.toString();
+		final int lastPeriod = timeStr.lastIndexOf(".");
+		if (lastPeriod <= 0)
+			return timeStr;
+		else
+			return timeStr.substring(0, lastPeriod);
+	}
+
+	@NotNull
+	private String formulateMessage(final @NotNull String str, final PlayerStoreInfo psi, final Location l, final boolean doCheckWG) {
+		final HashMap<String, String> v = new HashMap<>();
 		v.put("{PlayerName}", psi.playerName);
 		v.put("{World}", psi.worldName);
 		v.put("{X}", Integer.toString(psi.locationX));
 		v.put("{Y}", Integer.toString(psi.locationY));
 		v.put("{Z}", Integer.toString(psi.locationZ));
-		v.put("{LastSeen}", psi.lastOnline.toString());
+		v.put("{LastSeen}", (truncateTimeMilliseconds(psi.lastOnline)));
 		
-		String WG_Region = "";
-		if (this.hasWorldGuard && str.toLowerCase().indexOf("{worldguardregion}") >= 0) {
+		String wg_Region = "";
+		if (this.hasWorldGuard && str.toLowerCase().contains("{worldguardregion}")) {
 			if (l == null) {
-				World world = Bukkit.getServer().getWorld(psi.worldName);
+				final World world = Bukkit.getServer().getWorld(psi.worldName);
 				if (world != null) {
-					Location loc = new Location(world, Double.valueOf(psi.locationX), Double.valueOf(psi.locationY), Double.valueOf(psi.locationZ));
-					WG_Region = WorldGuardStuff.GetWorldGuardRegionsForLocation(loc);
+					final Location loc = new Location(world, psi.locationX, psi.locationY, psi.locationZ);
+					wg_Region = WorldGuardStuff.GetWorldGuardRegionsForLocation(loc);
 				}
 			} else {
-				WG_Region = WorldGuardStuff.GetWorldGuardRegionsForLocation(l);
-				if (WG_Region == null && !doCheckWG) return "";
+				wg_Region = WorldGuardStuff.GetWorldGuardRegionsForLocation(l);
+				if (wg_Region == null && !doCheckWG) return "";
 			}
 			
-			if (WG_Region == null) WG_Region = "";
+			if (wg_Region == null) wg_Region = "";
 		}
 
 		if (doCheckWG) {
-			this.WG_RegionPostformedString = formulateMessage(this.WG_RegionPreformedString, psi, l, false);
-			v.put("{RegionMessage}", this.WG_RegionPostformedString);
+			this.wg_RegionPostformedString = formulateMessage(this.wg_RegionPreformedString, psi, l, false);
+			v.put("{RegionMessage}", this.wg_RegionPostformedString);
 		}
 
 		if (!this.hasWorldGuard) v.put("{RegionMessage}", "");
-		v.put("{WorldGuardRegion}", WG_Region);
+		v.put("{WorldGuardRegion}", wg_Region);
 		
 		String formedStr = str;
-		Iterator<String> iterator = v.keySet().iterator();
-		
-		while (iterator.hasNext()) {
-			String key = iterator.next();
-			String temp = Helpers.ReplaceEx(formedStr, key, v.get(key).toString());
-			formedStr = temp;
+
+		for (final String key : v.keySet()) {
+			formedStr = Helpers.ReplaceEx(formedStr, key, v.get(key));
 		}
 		
 		return formedStr;
 	}
-	
-	private String preformulateMessage(String str) {
-		HashMap<String, ChatColor> v = new HashMap<String, ChatColor>();
+
+	@NotNull
+	private String preformulateMessage(final @NotNull String str) {
+		final HashMap<String, ChatColor> v = new HashMap<>();
 		v.put("{AQUA}", ChatColor.AQUA);
 		v.put("{BLACK}", ChatColor.BLACK);
 		v.put("{BLUE}", ChatColor.BLUE);
@@ -297,18 +309,15 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		v.put("{YELLOW}", ChatColor.YELLOW);
 		
 		String formedStr = str;
-		Iterator<String> iterator = v.keySet().iterator();
-		
-		while (iterator.hasNext()) {
-			String key = iterator.next();
-			String temp = Helpers.ReplaceEx(formedStr, key, v.get(key).toString());
-			formedStr = temp;
+
+		for (final String key : v.keySet()) {
+			formedStr = Helpers.ReplaceEx(formedStr, key, v.get(key).toString());
 		}
 		
 		return formedStr;
 	}
 	
 	private enum LoggingType{
-		None, Json, Mysql, Sqlite
+		NONE, JSON, MYSQL, SQLITE
 	}
 }

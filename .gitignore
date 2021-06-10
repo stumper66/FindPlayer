@@ -23,3 +23,10 @@
 hs_err_pid*
 /bin/
 /target/
+/.idea/workspace.xml
+/.idea/shelf/
+.idea/
+target/classes/plugin.yml
+target/classes/plugin.yml
+target/maven-archiver/pom.properties
+target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst

@@ -4,30 +4,27 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.logging.Logger;
 
 public class PlayerCache_Base {
 	public PlayerCache_Base() {
-		logger = Logger.getLogger("Minecraft");
-		this.Mapping = new HashMap<UUID, PlayerStoreInfo>();
-		this.NameMappings = new TreeMap<String, UUID>(String.CASE_INSENSITIVE_ORDER);
+		this.mapping = new HashMap<>();
+		this.nameMappings = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	}
 	
-	public final Logger logger;
-	public HashMap<UUID, PlayerStoreInfo> Mapping;
-	public final TreeMap<String, UUID> NameMappings;
+	public HashMap<UUID, PlayerStoreInfo> mapping;
+	public final TreeMap<String, UUID> nameMappings;
 	public File dataFile;
 	
-	public PlayerStoreInfo GetPlayerInfo(String Playername) {
-		if (!NameMappings.containsKey(Playername)) return null;
-		UUID userId = NameMappings.get(Playername);
+	public PlayerStoreInfo getPlayerInfo(final String playername) {
+		if (!nameMappings.containsKey(playername)) return null;
+		UUID userId = nameMappings.get(playername);
 		
-		return this.GetPlayerInfo(userId);
+		return this.getPlayerInfo(userId);
 	}
 	
-	public PlayerStoreInfo GetPlayerInfo(UUID UserId) {
-		if (!Mapping.containsKey(UserId)) return null;
+	public PlayerStoreInfo getPlayerInfo(final UUID userId) {
+		if (!mapping.containsKey(userId)) return null;
 		
-		return Mapping.get(UserId);
+		return mapping.get(userId);
 	}
 }
