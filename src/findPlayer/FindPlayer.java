@@ -62,7 +62,15 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	
 	@Override
 	public void onDisable() {
-		if (playerCache != null) playerCache.close();
+		if (playerCache != null) {
+			// save all online players
+			if (this.loggingType != LoggingType.NONE) {
+				for (final Player player : Bukkit.getOnlinePlayers()) {
+					savePlayerInfo(player);
+				}
+			}
+			playerCache.close();
+		}
 
 		final PluginDescriptionFile pdf = this.getDescription();
 		if (this.useDebug) Helpers.logger.info(pdf.getName() + " has been disabled");
@@ -72,12 +80,15 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	public void onPlayerQuit(final PlayerQuitEvent event){
 		if (this.loggingType == LoggingType.NONE) return;
 		
-		final Player p = event.getPlayer();
+		savePlayerInfo(event.getPlayer());
+	}
+
+	private void savePlayerInfo(final Player p){
 		final Location loc = p.getLocation();
-		  
+
 		final PlayerStoreInfo psi = new PlayerStoreInfo(p.getUniqueId(), p.getName(),
-					p.getWorld().getName(), loc);
-		
+				p.getWorld().getName(), loc);
+
 		playerCache.addOrUpdatePlayerInfo(psi);
 	}
 
