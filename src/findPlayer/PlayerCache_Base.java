@@ -1,9 +1,9 @@
 package findPlayer;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.File;
-import java.util.HashMap;
-import java.util.TreeMap;
-import java.util.UUID;
+import java.util.*;
 
 public class PlayerCache_Base {
 	public PlayerCache_Base() {
@@ -26,5 +26,17 @@ public class PlayerCache_Base {
 		if (!mapping.containsKey(userId)) return null;
 		
 		return mapping.get(userId);
+	}
+
+	@NotNull
+	public List<String> getAllPlayers(){
+		final List<String> lst = new ArrayList<>(this.mapping.size());
+
+		for (final UUID id : this.mapping.keySet()){
+			PlayerStoreInfo psi = this.mapping.get(id);
+			lst.add(psi.playerName);
+		}
+
+		return lst;
 	}
 }

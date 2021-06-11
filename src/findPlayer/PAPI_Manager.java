@@ -5,7 +5,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 public class PAPI_Manager extends PlaceholderExpansion {
-    public PAPI_Manager(final FindPlayer main){
+    public PAPI_Manager(final FindPlayer main) {
         this.main = main;
     }
 
@@ -38,7 +38,6 @@ public class PAPI_Manager extends PlaceholderExpansion {
 
     @Override
     public String onPlaceholderRequest(final Player player, final @NotNull String identifier){
-        Helpers.logger.info("got PAPI request for " + (player == null ? "(null)" : player.getName()));
         if (player == null) return "";
 
         if ("location".equalsIgnoreCase(identifier))

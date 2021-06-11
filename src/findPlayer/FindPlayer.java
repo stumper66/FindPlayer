@@ -14,7 +14,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -25,7 +24,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	public FileConfiguration config;
 	private LoggingType loggingType = LoggingType.NONE;
 	public boolean useDebug;
-	private IPlayerCache playerCache;
+	IPlayerCache playerCache;
 	@NotNull
 	private String playerOnlinePreformedString = "";
 	@NotNull
@@ -45,7 +44,10 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		playerCache.populateData();
 
 		final PluginCommand cmd = this.getCommand("findp");
-		if (cmd != null) cmd.setExecutor(this);
+		if (cmd != null) {
+			final FP_Commands fpCmds = new FP_Commands(this);
+			cmd.setExecutor(fpCmds);
+		}
 		getServer().getPluginManager().registerEvents(this, this);
 
 		if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null)
@@ -64,46 +66,6 @@ public class FindPlayer extends JavaPlugin implements Listener {
 
 		final PluginDescriptionFile pdf = this.getDescription();
 		if (this.useDebug) Helpers.logger.info(pdf.getName() + " has been disabled");
-	}
-	
-	@Override
-	public boolean onCommand(final @NotNull CommandSender sender, final Command cmd, final @NotNull String label, final String[] args) {
-		if (!cmd.getName().equalsIgnoreCase("findp"))
-			return true;
-
-		if(args.length != 1) {
-			final ChatColor g = ChatColor.GREEN;
-			final ChatColor y = ChatColor.YELLOW;
-			sender.sendMessage(y + "Usage: /findp PlayerName" + g + "|" + y + "reload" + g + "|" + y + "purge");
-			return true;
-		}
-
-		if (args[0].equalsIgnoreCase("reload")) {
-			if (!sender.hasPermission("FindPlayer.reload")) {
-				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
-				return true;
-			}
-
-			saveDefaultConfig();
-			this.reloadConfig();
-			config = getConfig();
-			processConfig(sender);
-			sender.sendMessage(ChatColor.YELLOW + "Reloaded the config.");
-		}
-		else if (args[0].equalsIgnoreCase("purge")) {
-			if (!sender.hasPermission("FindPlayer.purge")) {
-				sender.sendMessage(ChatColor.RED + "You don't have permissions for this command");
-				return true;
-			}
-			playerCache.purgeData();
-			sender.sendMessage(ChatColor.YELLOW + "Purged all cached data.");
-		}
-		else {
-			final String sendMsg = getMessageForPlayer(args[0]);
-			sender.sendMessage(sendMsg);
-		}
-
-		return true;
 	}
 
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
@@ -146,7 +108,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		return formulateMessage(this.playerOfflinePreformedString, psi, null, this.hasWorldGuard);
 	}
 		
-	private void processConfig(final CommandSender sender) {
+	void processConfig(final CommandSender sender) {
 		this.useDebug = config.getBoolean("debug", false);
 		final long writeTimeMs = config.getLong("json-write-time-ms", 5000L);
 		String loggingType = config.getString("player-logging-type");
