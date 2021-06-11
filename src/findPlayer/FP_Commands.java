@@ -33,8 +33,12 @@ public class FP_Commands implements CommandExecutor, TabCompleter {
             doReload(sender);
         else if (args[0].equalsIgnoreCase("purge"))
             doPurge(sender);
-        else if (args.length == 2 && args[0].equalsIgnoreCase("player"))
-            getPlayer(sender, args[1]);
+        else if (args[0].equalsIgnoreCase("player")) {
+            if (args.length >= 2)
+                getPlayer(sender, args[1]);
+            else
+                sender.sendMessage("Must specify a player name");
+        }
         else if (args[0].equalsIgnoreCase("version"))
             sender.sendMessage("FindPlayer, version " + main.getDescription().getVersion());
         else
