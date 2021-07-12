@@ -5,6 +5,11 @@
 # options are mysql, sqlite, json or none
 player-logging-type: json
 
+datetime-format: '{month}-{day}-{year} {hour}:{minute}:{second}'
+
+# valid options are ALL, online, offline
+default-name-filter: 'ALL'
+
 # these next 4 fields are only required if configured with mysql above
 mysql-hostname: ""
 mysql-database: ""
@@ -37,3 +42,5 @@ worldguard-region-message: " in region: {WorldGuardRegion}"
 #
 # in-game placeholders:
 # {PlayerName} {World} {X} {Y} {Z} {LastSeen} {RegionMessage} {WorldGuardRegion}
+
+file-version: 2

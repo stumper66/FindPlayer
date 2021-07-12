@@ -16,11 +16,11 @@ permissions:
     description: 'all findplayer permissions'
     default: op
     children:
-      FindPlayer.findp: true
+      FindPlayer.player: true
       FindPlayer.reload: true
       FindPlayer.purge: true
-  FindPlayer.findp:
-    description: access to /FindPlayer [playername]
+  FindPlayer.player:
+    description: access to /FindPlayer player [playername]
     default: op
   FindPlayer.reload:
     description: access to /FindPlayer reload

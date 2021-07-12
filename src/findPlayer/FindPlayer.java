@@ -21,9 +21,9 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.NotNull;
 
 public class FindPlayer extends JavaPlugin implements Listener {
-	public FileConfiguration config;
-	private LoggingType loggingType = LoggingType.NONE;
-	public boolean useDebug;
+	FileConfiguration config;
+	LoggingType loggingType = LoggingType.NONE;
+	boolean useDebug;
 	IPlayerCache playerCache;
 	@NotNull
 	private String playerOnlinePreformedString = "";
@@ -31,17 +31,19 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	private String playerOfflinePreformedString = "";
 	private String wg_RegionPreformedString;
 	private String wg_RegionPostformedString;
-	public boolean hasWorldGuard = false;
+	boolean hasWorldGuard = false;
+	FilterOption defaultFilter;
 	
 	@Override
     public void onEnable() {
 		playerOnlinePreformedString = "";
+		defaultFilter = FilterOption.ALL;
 		saveDefaultConfig();
 		config = getConfig();
-		
+
 		this.hasWorldGuard = WorldGuardStuff.CheckForWorldGuard();
 		processConfig(null);
-		playerCache.populateData();
+		if (playerCache != null) playerCache.populateData();
 
 		final PluginCommand cmd = this.getCommand("findp");
 		if (cmd != null) {
@@ -120,6 +122,8 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	}
 		
 	void processConfig(final CommandSender sender) {
+		ConfigMigrator.checkConfigVersion(this);
+
 		this.useDebug = config.getBoolean("debug", false);
 		final long writeTimeMs = config.getLong("json-write-time-ms", 5000L);
 		String loggingType = config.getString("player-logging-type");
@@ -198,18 +202,15 @@ public class FindPlayer extends JavaPlugin implements Listener {
 				case 2: this.wg_RegionPreformedString = temp; break;
 			}
 		}
+
+		try{
+			this.defaultFilter = FilterOption.valueOf(config.getString("default-name-filter", "ALL").toUpperCase());
+		}
+		catch (Exception ignored){
+			Helpers.logger.warning("Invalid value for default-name-filter");
+		}
 		
 		this.wg_RegionPostformedString = "";
-	}
-
-	@NotNull
-	private static String truncateTimeMilliseconds(final LocalDateTime time){
-		final String timeStr = time.toString();
-		final int lastPeriod = timeStr.lastIndexOf(".");
-		if (lastPeriod <= 0)
-			return timeStr;
-		else
-			return timeStr.substring(0, lastPeriod);
 	}
 
 	@NotNull
@@ -220,7 +221,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		v.put("{X}", Integer.toString(psi.locationX));
 		v.put("{Y}", Integer.toString(psi.locationY));
 		v.put("{Z}", Integer.toString(psi.locationZ));
-		v.put("{LastSeen}", (truncateTimeMilliseconds(psi.lastOnline)));
+		v.put("{LastSeen}", (formatDateTime(psi.lastOnline)));
 		
 		String wg_Region = "";
 		if (this.hasWorldGuard && str.toLowerCase().contains("{worldguardregion}")) {
@@ -252,6 +253,27 @@ public class FindPlayer extends JavaPlugin implements Listener {
 			formedStr = Helpers.ReplaceEx(formedStr, key, v.get(key));
 		}
 		
+		return formedStr;
+	}
+
+	private String formatDateTime(final LocalDateTime time){
+		final HashMap<String, Object> v = new HashMap<>();
+		v.put("{day}", time.getDayOfMonth());
+		v.put("{month}", time.getMonthValue());
+		v.put("{year}", time.getYear());
+		v.put("{hour}", time.getHour() < 10 ? "0" + time.getHour() : time.getHour());
+		v.put("{minute}", time.getMinute() < 10 ? "0" + time.getMinute() : time.getMinute());
+		v.put("{second}", time.getSecond() < 10 ? "0" + time.getSecond() : time.getSecond());
+
+		String formedStr = config.getString("datetime-format", "");
+
+		for (final String key : v.keySet()) {
+			formedStr = Helpers.ReplaceEx(formedStr, key, v.get(key).toString());
+		}
+
+		if (formedStr.isEmpty())
+			formedStr = time.toString();
+
 		return formedStr;
 	}
 
