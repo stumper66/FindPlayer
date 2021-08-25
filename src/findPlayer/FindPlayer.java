@@ -3,11 +3,11 @@ package findPlayer;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 
+import co.aikar.commands.PaperCommandManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.ChatColor;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -33,6 +33,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 	private String wg_RegionPostformedString;
 	boolean hasWorldGuard = false;
 	FilterOption defaultFilter;
+	public PaperCommandManager commandManager;
 	
 	@Override
     public void onEnable() {
@@ -45,11 +46,13 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		processConfig(null);
 		if (playerCache != null) playerCache.populateData();
 
-		final PluginCommand cmd = this.getCommand("findp");
-		if (cmd != null) {
-			final FP_Commands fpCmds = new FP_Commands(this);
-			cmd.setExecutor(fpCmds);
-		}
+//		final PluginCommand cmd = this.getCommand("findp");
+//		if (cmd != null) {
+//			final FP_Commands fpCmds = new FP_Commands(this);
+//			cmd.setExecutor(fpCmds);
+//		}
+
+		registerCommands();
 		getServer().getPluginManager().registerEvents(this, this);
 
 		if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null)
@@ -60,6 +63,11 @@ public class FindPlayer extends JavaPlugin implements Listener {
 		if (this.useDebug) Helpers.logger.info("Has WorldGuard: " + this.hasWorldGuard);
 		final String msg = String.format("%s (%s) has been enabled", pdf.getName(), pdf.getVersion());
 		Helpers.logger.info(msg);
+	}
+
+	private void registerCommands(){
+		this.commandManager = new PaperCommandManager(this);
+		this.commandManager.registerCommand(new ACF_Commands(this));
 	}
 	
 	@Override

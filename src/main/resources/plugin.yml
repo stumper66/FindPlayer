@@ -9,10 +9,10 @@ description: ${project.description}
 commands:
    findp:
          description: This command returns a player's coordinates. If configured with logging it will also store player's coordinates when they are offline.
-         usage: /findp [player|reload|purge]
+         usage: /findp [filter|player|reload|purge|info]
 
 permissions:
-  findplayer.*:
+  FindPlayer.*:
     description: 'all findplayer permissions'
     default: op
     children:
