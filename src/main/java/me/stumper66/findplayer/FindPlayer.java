@@ -3,12 +3,22 @@ package me.stumper66.findplayer;
 import co.aikar.commands.PaperCommandManager;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import me.stumper66.findplayer.command.AcfCommands;
+import me.stumper66.findplayer.command.FilterOption;
+import me.stumper66.findplayer.config.ConfigMigrator;
+import me.stumper66.findplayer.data.IPlayerCache;
+import me.stumper66.findplayer.data.PlayerCacheJson;
+import me.stumper66.findplayer.data.PlayerCacheSQL;
+import me.stumper66.findplayer.data.PlayerStoreInfo;
+import me.stumper66.findplayer.integration.PlaceholderApiHandler;
+import me.stumper66.findplayer.integration.WorldGuardHandler;
+import me.stumper66.findplayer.misc.Helpers;
+import me.stumper66.findplayer.misc.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -20,18 +30,14 @@ import org.jetbrains.annotations.NotNull;
 
 public class FindPlayer extends JavaPlugin implements Listener {
 
-    FileConfiguration config;
-    LoggingType loggingType = LoggingType.NONE;
-    boolean useDebug;
-    IPlayerCache playerCache;
-    @NotNull
-    private String playerOnlinePreformedString = "";
-    @NotNull
-    private String playerOfflinePreformedString = "";
-    private String wg_RegionPreformedString;
-    private String wg_RegionPostformedString;
-    boolean hasWorldGuard = false;
-    FilterOption defaultFilter;
+    public LoggingType loggingType = LoggingType.NONE;
+    public boolean useDebug;
+    public IPlayerCache playerCache;
+    @NotNull private String playerOnlinePreformedString = "";
+    @NotNull private String playerOfflinePreformedString = "";
+    private String wgRegionPreformedString;
+    private String wgRegionPostformedString;
+    public FilterOption defaultFilter;
     public PaperCommandManager commandManager;
 
     @Override
@@ -39,35 +45,20 @@ public class FindPlayer extends JavaPlugin implements Listener {
         playerOnlinePreformedString = "";
         defaultFilter = FilterOption.ALL;
         saveDefaultConfig();
-        config = getConfig();
 
-        this.hasWorldGuard = WorldGuardStuff.CheckForWorldGuard();
         processConfig(null);
         if(playerCache != null) {
             playerCache.populateData();
         }
 
-//		final PluginCommand cmd = this.getCommand("findp");
-//		if (cmd != null) {
-//			final FP_Commands fpCmds = new FP_Commands(this);
-//			cmd.setExecutor(fpCmds);
-//		}
-
         registerCommands();
         getServer().getPluginManager().registerEvents(this, this);
 
-        if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PAPI_Manager(this).register();
+        if(PlaceholderApiHandler.hasPlaceholderApi()) {
+            new PlaceholderApiHandler(this).register();
         }
 
-        final PluginDescriptionFile pdf = this.getDescription();
-
-        if(this.useDebug) {
-            Helpers.logger.info("Has WorldGuard: " + this.hasWorldGuard);
-        }
-        final String msg = String.format("%s (%s) has been enabled", pdf.getName(),
-            pdf.getVersion());
-        Helpers.logger.info(msg);
+        Helpers.logger.info("Start-up complete.");
     }
 
     private void registerCommands() {
@@ -123,31 +114,31 @@ public class FindPlayer extends JavaPlugin implements Listener {
             psi = new PlayerStoreInfo(p.getUniqueId(), p.getName(),
                 p.getWorld().getName(), loc);
 
-            if(this.hasWorldGuard) {
-                psi.regionNames = WorldGuardStuff.GetWorldGuardRegionsForLocation(loc);
+            if(WorldGuardHandler.hasWorldGuard()) {
+                psi.regionNames = WorldGuardHandler.getWorldGuardRegionsForLocation(loc);
             }
 
             playerCache.addOrUpdatePlayerInfo(psi);
-            return formulateMessage(this.playerOnlinePreformedString, psi, loc, this.hasWorldGuard);
+            return formulateMessage(this.playerOnlinePreformedString, psi, loc, WorldGuardHandler.hasWorldGuard());
         }
 
         // player was null.  Let's see if we have the name cached
         psi = playerCache.getPlayerInfo(playerName);
         if(psi == null) {
-            return preformulateMessage(config.getString("invalid-player-message",
+            return preformulateMessage(getConfig().getString("invalid-player-message",
                 ChatColor.RED + "Player name invalid or is offline."));
         }
 
-        return formulateMessage(this.playerOfflinePreformedString, psi, null, this.hasWorldGuard);
+        return formulateMessage(this.playerOfflinePreformedString, psi, null, WorldGuardHandler.hasWorldGuard());
     }
 
-    void processConfig(final CommandSender sender) {
+    public void processConfig(final CommandSender sender) {
         ConfigMigrator.checkConfigVersion(this);
 
-        this.useDebug = config.getBoolean("debug", false);
-        final long writeTimeMs = config.getLong("json-write-time-ms", 5000L);
-        String loggingType = config.getString("player-logging-type");
-        if(Helpers.isNullOrEmpty(loggingType)) {
+        this.useDebug = getConfig().getBoolean("debug", false);
+        final long writeTimeMs = getConfig().getLong("json-write-time-ms", 5000L);
+        String loggingType = getConfig().getString("player-logging-type");
+        if(Utils.isNullOrEmpty(loggingType)) {
             loggingType = "json";
         }
 
@@ -159,26 +150,26 @@ public class FindPlayer extends JavaPlugin implements Listener {
             switch(loggingType.toLowerCase()) {
                 case "mysql":
                     this.loggingType = LoggingType.MYSQL;
-                    final PlayerCache_SQL.MySQL_ConfigInfo sconfig = new PlayerCache_SQL.MySQL_ConfigInfo();
-                    sconfig.database = config.getString("mysql-database");
-                    sconfig.hostname = config.getString("mysql-hostname");
-                    sconfig.username = config.getString("mysql-username");
-                    sconfig.password = config.getString("mysql-password");
+                    final PlayerCacheSQL.MySQL_ConfigInfo sconfig = new PlayerCacheSQL.MySQL_ConfigInfo();
+                    sconfig.database = getConfig().getString("mysql-database");
+                    sconfig.hostname = getConfig().getString("mysql-hostname");
+                    sconfig.username = getConfig().getString("mysql-username");
+                    sconfig.password = getConfig().getString("mysql-password");
 
-                    final PlayerCache_SQL mysql = new PlayerCache_SQL(sconfig, useDebug);
+                    final PlayerCacheSQL mysql = new PlayerCacheSQL(sconfig, useDebug);
                     playerCache = mysql;
                     mysql.openConnection();
                     break;
                 case "sqlite":
                     this.loggingType = LoggingType.SQLITE;
-                    final PlayerCache_SQL sqlite = new PlayerCache_SQL(this.getDataFolder(),
+                    final PlayerCacheSQL sqlite = new PlayerCacheSQL(this.getDataFolder(),
                         useDebug);
                     playerCache = sqlite;
                     sqlite.openConnection();
                     break;
                 case "json":
                     this.loggingType = LoggingType.JSON;
-                    playerCache = new PlayerCache_Json(this.getDataFolder(), writeTimeMs, useDebug);
+                    playerCache = new PlayerCacheJson(this.getDataFolder(), writeTimeMs, useDebug);
                     break;
                 default:
                     this.loggingType = LoggingType.NONE;
@@ -201,9 +192,9 @@ public class FindPlayer extends JavaPlugin implements Listener {
         }
 
         final String[] preformedMessages = new String[]{
-            config.getString("player-online-message", null),
-            config.getString("player-offline-message", null),
-            config.getString("worldguard-region-message", null)
+            getConfig().getString("player-online-message", null),
+            getConfig().getString("player-offline-message", null),
+            getConfig().getString("worldguard-region-message", null)
         };
 
         final String[] defaultMessages = new String[]{
@@ -213,13 +204,13 @@ public class FindPlayer extends JavaPlugin implements Listener {
         };
 
         for(int i = 0; i < preformedMessages.length; i++) {
-            if(i == 2 && !this.hasWorldGuard) {
-                this.wg_RegionPreformedString = "";
+            if(i == 2 && !WorldGuardHandler.hasWorldGuard()) {
+                this.wgRegionPreformedString = "";
                 continue;
             }
 
             String temp = preformedMessages[i];
-            if(Helpers.isNullOrEmpty(temp)) {
+            if(Utils.isNullOrEmpty(temp)) {
                 temp = defaultMessages[i];
             }
 
@@ -233,19 +224,19 @@ public class FindPlayer extends JavaPlugin implements Listener {
                     this.playerOfflinePreformedString = temp;
                     break;
                 case 2:
-                    this.wg_RegionPreformedString = temp;
+                    this.wgRegionPreformedString = temp;
                     break;
             }
         }
 
         try {
             this.defaultFilter = FilterOption.valueOf(
-                config.getString("default-name-filter", "ALL").toUpperCase());
+                getConfig().getString("default-name-filter", "ALL").toUpperCase());
         } catch(Exception ignored) {
             Helpers.logger.warning("Invalid value for default-name-filter");
         }
 
-        this.wg_RegionPostformedString = "";
+        this.wgRegionPostformedString = "";
     }
 
     @NotNull
@@ -260,16 +251,16 @@ public class FindPlayer extends JavaPlugin implements Listener {
         v.put("{LastSeen}", (formatDateTime(psi.lastOnline)));
 
         String wg_Region = "";
-        if(this.hasWorldGuard && str.toLowerCase().contains("{worldguardregion}")) {
+        if(WorldGuardHandler.hasWorldGuard() && str.toLowerCase().contains("{worldguardregion}")) {
             if(l == null) {
                 final World world = Bukkit.getServer().getWorld(psi.worldName);
                 if(world != null) {
                     final Location loc = new Location(world, psi.locationX, psi.locationY,
                         psi.locationZ);
-                    wg_Region = WorldGuardStuff.GetWorldGuardRegionsForLocation(loc);
+                    wg_Region = WorldGuardHandler.getWorldGuardRegionsForLocation(loc);
                 }
             } else {
-                wg_Region = WorldGuardStuff.GetWorldGuardRegionsForLocation(l);
+                wg_Region = WorldGuardHandler.getWorldGuardRegionsForLocation(l);
                 if(wg_Region == null && !doCheckWG) {
                     return "";
                 }
@@ -281,12 +272,12 @@ public class FindPlayer extends JavaPlugin implements Listener {
         }
 
         if(doCheckWG) {
-            this.wg_RegionPostformedString = formulateMessage(this.wg_RegionPreformedString, psi, l,
+            this.wgRegionPostformedString = formulateMessage(this.wgRegionPreformedString, psi, l,
                 false);
-            v.put("{RegionMessage}", this.wg_RegionPostformedString);
+            v.put("{RegionMessage}", this.wgRegionPostformedString);
         }
 
-        if(!this.hasWorldGuard) {
+        if(!WorldGuardHandler.hasWorldGuard()) {
             v.put("{RegionMessage}", "");
         }
         v.put("{WorldGuardRegion}", wg_Region);
@@ -294,12 +285,13 @@ public class FindPlayer extends JavaPlugin implements Listener {
         String formedStr = str;
 
         for(final String key : v.keySet()) {
-            formedStr = Helpers.ReplaceEx(formedStr, key, v.get(key));
+            formedStr = Helpers.replaceIgnoreCase(formedStr, key, v.get(key));
         }
 
         return formedStr;
     }
 
+    //TODO remove: Java has its own inbuilt date time formatting system
     private String formatDateTime(final LocalDateTime time) {
         final HashMap<String, Object> v = new HashMap<>();
         v.put("{day}", time.getDayOfMonth());
@@ -309,10 +301,10 @@ public class FindPlayer extends JavaPlugin implements Listener {
         v.put("{minute}", time.getMinute() < 10 ? "0" + time.getMinute() : time.getMinute());
         v.put("{second}", time.getSecond() < 10 ? "0" + time.getSecond() : time.getSecond());
 
-        String formedStr = config.getString("datetime-format", "");
+        String formedStr = getConfig().getString("datetime-format", "");
 
         for(final String key : v.keySet()) {
-            formedStr = Helpers.ReplaceEx(formedStr, key, v.get(key).toString());
+            formedStr = Helpers.replaceIgnoreCase(formedStr, key, v.get(key).toString());
         }
 
         if(formedStr.isEmpty()) {
@@ -322,6 +314,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
         return formedStr;
     }
 
+    //TODO remove: redundant due to legacy color code support
     @NotNull
     private String preformulateMessage(final @NotNull String str) {
         final HashMap<String, ChatColor> v = new HashMap<>();
@@ -351,7 +344,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
         String formedStr = str;
 
         for(final String key : v.keySet()) {
-            formedStr = Helpers.ReplaceEx(formedStr, key, v.get(key).toString());
+            formedStr = Helpers.replaceIgnoreCase(formedStr, key, v.get(key).toString());
         }
 
         return formedStr;

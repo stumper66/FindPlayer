@@ -1,12 +1,18 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.integration;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import me.stumper66.findplayer.FindPlayer;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-public class PAPI_Manager extends PlaceholderExpansion {
+public class PlaceholderApiHandler extends PlaceholderExpansion {
 
-    public PAPI_Manager(final FindPlayer main) {
+    public static boolean hasPlaceholderApi() {
+        return Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
+    }
+
+    public PlaceholderApiHandler(final FindPlayer main) {
         this.main = main;
     }
 

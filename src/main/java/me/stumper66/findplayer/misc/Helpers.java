@@ -1,11 +1,12 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.misc;
 
 import me.lokka30.microlib.MicroLogger;
 import org.jetbrains.annotations.NotNull;
 
 public class Helpers {
 
-    public static String ReplaceEx(String original, String pattern, String replacement) {
+    //TODO remove?
+    public static String replaceIgnoreCase(String original, String pattern, String replacement) {
         if(original == null || pattern == null) {
             return null;
         }
@@ -37,10 +38,7 @@ public class Helpers {
         return new String(chars, 0, count);
     }
 
-    public static boolean isNullOrEmpty(String str) {
-        return str == null || str.isEmpty();
-    }
-
+    //TODO remove
     @NotNull
     public static final MicroLogger logger = new MicroLogger("&b&lFindPlayer: &7");
 }

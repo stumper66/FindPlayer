@@ -1,4 +1,4 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.data;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -18,11 +18,12 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import me.stumper66.findplayer.misc.Helpers;
 import org.jetbrains.annotations.NotNull;
 
-public class PlayerCache_Json extends PlayerCache_Base implements IPlayerCache {
+public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
 
-    public PlayerCache_Json(final File dataDirectory, long writeTimeMs,
+    public PlayerCacheJson(final File dataDirectory, long writeTimeMs,
         final boolean debugEnabled) {
         this.useDebug = debugEnabled;
         final GsonBuilder builder = new GsonBuilder();

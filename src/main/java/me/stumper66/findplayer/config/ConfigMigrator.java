@@ -1,4 +1,4 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.config;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import javax.annotation.Nonnull;
+import me.stumper66.findplayer.FindPlayer;
+import me.stumper66.findplayer.misc.Helpers;
+import me.stumper66.findplayer.misc.Utils;
 import org.bukkit.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +23,7 @@ public class ConfigMigrator {
 
     public static void checkConfigVersion(final FindPlayer main) {
 
-        final int version = main.config.getInt("file-version", 0);
+        final int version = main.getConfig().getInt("file-version", 0);
 
         if(version >= currentConfigVersion) {
             return;
@@ -104,7 +107,7 @@ public class ConfigMigrator {
                                 if(fiOld.isList()) {
                                     continue;
                                 }
-                                final String padding = " ".repeat(depth * 2);
+                                final String padding = Utils.repeatString(" ", depth * 2);
                                 final String newline =
                                     padding + getEndingKey(oldValue) + ": " + fiOld.simpleValue;
                                 newConfigLines.add(currentLine + 1, newline);

@@ -1,4 +1,4 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.data;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -8,9 +8,9 @@ import java.util.TreeMap;
 import java.util.UUID;
 import org.jetbrains.annotations.NotNull;
 
-public class PlayerCache_Base {
+public class PlayerCacheBase {
 
-    public PlayerCache_Base() {
+    public PlayerCacheBase() {
         this.mapping = new HashMap<>();
         this.nameMappings = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     }

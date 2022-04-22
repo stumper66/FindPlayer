@@ -1,4 +1,4 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.data;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;

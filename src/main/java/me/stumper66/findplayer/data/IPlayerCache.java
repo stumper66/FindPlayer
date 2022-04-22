@@ -1,4 +1,4 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.data;
 
 import java.util.List;
 import org.jetbrains.annotations.NotNull;

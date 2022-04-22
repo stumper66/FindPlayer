@@ -1,4 +1,4 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.integration;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -11,14 +11,14 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.jetbrains.annotations.Nullable;
 
-public class WorldGuardStuff {
+public class WorldGuardHandler {
 
-    public static boolean CheckForWorldGuard() {
-        return Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
+    public static boolean hasWorldGuard() {
+        return Bukkit.getPluginManager().isPluginEnabled("WorldGuard");
     }
 
     @Nullable
-    public static String GetWorldGuardRegionsForLocation(final Location l) {
+    public static String getWorldGuardRegionsForLocation(final Location l) {
         final World world = l.getWorld();
         if(world == null) {
             return null;

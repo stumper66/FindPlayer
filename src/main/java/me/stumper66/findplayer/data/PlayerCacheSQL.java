@@ -1,4 +1,4 @@
-package me.stumper66.findplayer;
+package me.stumper66.findplayer.data;
 
 import java.io.File;
 import java.sql.Connection;
@@ -13,17 +13,19 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import me.stumper66.findplayer.misc.Helpers;
+import me.stumper66.findplayer.misc.Utils;
 
-public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
+public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
 
-    public PlayerCache_SQL(final MySQL_ConfigInfo config, final boolean debugEnabled) {
+    public PlayerCacheSQL(final MySQL_ConfigInfo config, final boolean debugEnabled) {
         // since this constructor was used we are using mysql
         this.useDebug = debugEnabled;
         this.config = config;
         this.isSqlLite = false;
     }
 
-    public PlayerCache_SQL(final File dataDirectory, final boolean debugEnabled) {
+    public PlayerCacheSQL(final File dataDirectory, final boolean debugEnabled) {
         // if no constructor is used, then this is sqlite
         this.useDebug = debugEnabled;
         this.isSqlLite = true;
@@ -189,7 +191,7 @@ public class PlayerCache_SQL extends PlayerCache_Base implements IPlayerCache {
         String queryMain;
         boolean useId = false;
 
-        if(Helpers.isNullOrEmpty(playerName)) {
+        if(Utils.isNullOrEmpty(playerName)) {
             queryMain = queryPre + queryId;
             useId = true;
         } else {
