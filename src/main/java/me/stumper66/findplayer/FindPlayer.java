@@ -3,6 +3,7 @@ package me.stumper66.findplayer;
 import co.aikar.commands.PaperCommandManager;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import me.lokka30.microlib.MessageUtils;
 import me.stumper66.findplayer.command.AcfCommands;
 import me.stumper66.findplayer.command.FilterOption;
 import me.stumper66.findplayer.config.ConfigMigrator;
@@ -241,7 +242,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 
     @NotNull
     private String formulateMessage(final @NotNull String str, final PlayerStoreInfo psi,
-        final Location l, final boolean doCheckWG) {
+        final Location l, final boolean checkWg) {
         final HashMap<String, String> v = new HashMap<>();
         v.put("{PlayerName}", psi.playerName);
         v.put("{World}", psi.worldName);
@@ -261,7 +262,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
                 }
             } else {
                 wg_Region = WorldGuardHandler.getWorldGuardRegionsForLocation(l);
-                if(wg_Region == null && !doCheckWG) {
+                if(wg_Region == null && !checkWg) {
                     return "";
                 }
             }
@@ -271,7 +272,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
             }
         }
 
-        if(doCheckWG) {
+        if(checkWg) {
             this.wgRegionPostformedString = formulateMessage(this.wgRegionPreformedString, psi, l,
                 false);
             v.put("{RegionMessage}", this.wgRegionPostformedString);
@@ -314,9 +315,9 @@ public class FindPlayer extends JavaPlugin implements Listener {
         return formedStr;
     }
 
-    //TODO remove: redundant due to legacy color code support
     @NotNull
     private String preformulateMessage(final @NotNull String str) {
+        //TODO use an enum for that instead
         final HashMap<String, ChatColor> v = new HashMap<>();
         v.put("{AQUA}", ChatColor.AQUA);
         v.put("{BLACK}", ChatColor.BLACK);
@@ -347,7 +348,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
             formedStr = Helpers.replaceIgnoreCase(formedStr, key, v.get(key).toString());
         }
 
-        return formedStr;
+        return MessageUtils.colorizeAll(formedStr);
     }
 
     private enum LoggingType {

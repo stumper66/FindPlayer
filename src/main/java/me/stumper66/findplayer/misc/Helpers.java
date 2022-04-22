@@ -3,6 +3,7 @@ package me.stumper66.findplayer.misc;
 import me.lokka30.microlib.MicroLogger;
 import org.jetbrains.annotations.NotNull;
 
+//TODO remove
 public class Helpers {
 
     //TODO remove?
@@ -38,7 +39,7 @@ public class Helpers {
         return new String(chars, 0, count);
     }
 
-    //TODO remove
+    //TODO remove: use Bukkit logger instead.
     @NotNull
     public static final MicroLogger logger = new MicroLogger("&b&lFindPlayer: &7");
 }
