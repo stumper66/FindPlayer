@@ -18,13 +18,18 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
-import me.stumper66.findplayer.misc.Helpers;
+import me.stumper66.findplayer.FindPlayer;
 import org.jetbrains.annotations.NotNull;
 
 public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
 
-    public PlayerCacheJson(final File dataDirectory, long writeTimeMs,
-        final boolean debugEnabled) {
+    public PlayerCacheJson(
+        final FindPlayer main,
+        final File dataDirectory,
+        long writeTimeMs,
+        final boolean debugEnabled
+    ) {
+        this.main = main;
         this.useDebug = debugEnabled;
         final GsonBuilder builder = new GsonBuilder();
         builder.registerTypeAdapter(LocalDateTime.class, LocalDateTimeJsonAdapter.INSTANCE);
@@ -43,7 +48,8 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
         timer.schedule(timerTask, 1000L, writeTimeMs);
     }
 
-    private boolean _isDirty = false; // used for flat file writes
+    private final FindPlayer main;
+    private boolean isDirty = false; // used for flat file writes
     private final Gson gs;
     private boolean useDebug;
     private static final Object lockObj = new Object();
@@ -51,13 +57,13 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
 
     private void runWriter() {
         synchronized(lockObj) {
-            if(!_isDirty) {
+            if(!isDirty) {
                 return;
             }
         }
 
         if(useDebug) {
-            Helpers.logger.info("writer queue has work");
+            main.getLogger().info("writer queue has work");
         }
 
         writeToDisk();
@@ -65,7 +71,7 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
 
     public void close() {
         timer.cancel();
-        if(!_isDirty) {
+        if(!isDirty) {
             return;
         }
 
@@ -80,7 +86,7 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
         synchronized(lockObj) {
             this.mapping.clear();
             this.nameMappings.clear();
-            this._isDirty = true;
+            this.isDirty = true;
         }
     }
 
@@ -90,7 +96,7 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
         synchronized(lockObj) {
             this.mapping.put(psi.userId, psi);
             this.nameMappings.put(psi.playerName, psi.userId);
-            this._isDirty = true;
+            this.isDirty = true;
         }
     }
 
@@ -102,11 +108,11 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
             try(Writer fr = new OutputStreamWriter(new FileOutputStream(this.dataFile),
                 StandardCharsets.UTF_8)) {
                 fr.write(fileJson);
-                this._isDirty = false;
+                this.isDirty = false;
             } catch(IOException e) {
-                Helpers.logger.warning("Error writing to disk. " + e.getMessage());
+                main.getLogger().warning("Error writing to disk: " + e.getMessage());
             }
-            this._isDirty = false;
+            this.isDirty = false;
         } // end lock
     }
 
@@ -116,7 +122,7 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
         }
 
         if(useDebug) {
-            Helpers.logger.info("about to read: " + dataFile.getAbsolutePath());
+            main.getLogger().info("About to read: " + dataFile.getAbsolutePath());
         }
         String jsonStr;
 
@@ -124,7 +130,7 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
             jsonStr = new String(Files.readAllBytes(Paths.get(dataFile.getPath())),
                 StandardCharsets.UTF_8);
         } catch(IOException e) {
-            Helpers.logger.warning("error reading json file. " + e.getMessage());
+            main.getLogger().warning("Error reading json file: " + e.getMessage());
             return;
         }
 
@@ -141,8 +147,8 @@ public class PlayerCacheJson extends PlayerCacheBase implements IPlayerCache {
         }
 
         if(useDebug) {
-            Helpers.logger.info(
-                "items count: " + mapping.size() + ", name mappings: " + nameMappings.size());
+            main.getLogger().info("items count: " + mapping.size() + ", name mappings: " +
+                nameMappings.size());
         }
     }
 }

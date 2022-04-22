@@ -11,7 +11,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import javax.annotation.Nonnull;
 import me.stumper66.findplayer.FindPlayer;
-import me.stumper66.findplayer.misc.Helpers;
 import me.stumper66.findplayer.misc.Utils;
 import org.bukkit.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
@@ -19,9 +18,14 @@ import org.jetbrains.annotations.Nullable;
 
 public class ConfigMigrator {
 
+    private final FindPlayer main;
+    public ConfigMigrator(final FindPlayer main) {
+        this.main = main;
+    }
+
     final private static int currentConfigVersion = 2;
 
-    public static void checkConfigVersion(final FindPlayer main) {
+    public void checkConfigVersion() {
 
         final int version = main.getConfig().getInt("file-version", 0);
 
@@ -35,12 +39,12 @@ public class ConfigMigrator {
 
         main.saveResource(configFile.getName(), true);
 
-        Helpers.logger.info(
-            "&fConfig Migrator: &7Migrating &bconfig.yml&7 from old version to new version.");
+        main.getLogger().info("Config Migrator: Migrating 'config.yml' from the old version "
+            + "to the new version.");
         migrateConfig(backedupFile, configFile);
     }
 
-    private static void migrateConfig(File from, @NotNull File to) {
+    private void migrateConfig(File from, @NotNull File to) {
         final String regexPattern = "^[^':]*:.*";
         final List<String> processedKeys = new LinkedList<>();
 
@@ -111,8 +115,8 @@ public class ConfigMigrator {
                                 final String newline =
                                     padding + getEndingKey(oldValue) + ": " + fiOld.simpleValue;
                                 newConfigLines.add(currentLine + 1, newline);
-                                Helpers.logger.info("&fConfig Migrator: &7Adding key: &b" + oldValue
-                                    + "&7, value: &r" + fiOld.simpleValue + "&7.");
+                                main.getLogger().info("Config Migrator: Adding key '" + oldValue
+                                    + "' with value '" + fiOld.simpleValue + "'.");
                             }
                             processedKeys.add(parentKey);
                         }
@@ -120,9 +124,9 @@ public class ConfigMigrator {
                         if(!value.equals(migratedValue)) {
                             if(migratedValue != null) {
                                 valuesUpdated++;
-                                Helpers.logger.info("&fConfig Migrator: &7Current key: &b" + key
-                                    + "&7, replacing: &r" + value + "&7, with: &r" + migratedValue
-                                    + "&7.");
+                                main.getLogger().info("Config Migrator: Current key: '" + key
+                                    + "', replacing: '" + value + "', with: '" + migratedValue
+                                    + "'.");
                                 line = line.replace(value, migratedValue);
                                 newConfigLines.set(currentLine, line);
                             }
@@ -133,14 +137,14 @@ public class ConfigMigrator {
                 }
             } // next line
 
-            Helpers.logger.info(String.format(
-                "&fConfig Migrator: &7Keys matched: &b%s&7, values matched: &b%s&7, values updated: &b%s&7.",
+            main.getLogger().info(String.format(
+                "Config Migrator: Keys matched: '%s', values matched: '%s', values updated: '%s'.",
                 keysMatched, valuesMatched, valuesUpdated));
             Files.write(to.toPath(), newConfigLines, StandardCharsets.UTF_8,
                 StandardOpenOption.TRUNCATE_EXISTING);
         } catch(Exception e) {
-            Helpers.logger.error(
-                "&fConfig Migrator: &7Failed to migrate &b" + to.getName() + "&7! Stack trace:");
+            main.getLogger().severe(
+                "Config Migrator: Failed to migrate '" + to.getName() + "'! Stack trace:");
             e.printStackTrace();
         }
     }

@@ -13,26 +13,37 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import me.stumper66.findplayer.misc.Helpers;
+import me.stumper66.findplayer.FindPlayer;
 import me.stumper66.findplayer.misc.Utils;
 
 public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
 
-    public PlayerCacheSQL(final MySQL_ConfigInfo config, final boolean debugEnabled) {
+    public PlayerCacheSQL(
+        final FindPlayer main,
+        final MySQL_ConfigInfo config,
+        final boolean debugEnabled
+    ) {
         // since this constructor was used we are using mysql
+        this.main = main;
         this.useDebug = debugEnabled;
         this.config = config;
         this.isSqlLite = false;
     }
 
-    public PlayerCacheSQL(final File dataDirectory, final boolean debugEnabled) {
+    public PlayerCacheSQL(
+        final FindPlayer main,
+        final File dataDirectory,
+        final boolean debugEnabled
+    ) {
         // if no constructor is used, then this is sqlite
+        this.main = main;
         this.useDebug = debugEnabled;
         this.isSqlLite = true;
         this.whichSQL = "sqlite";
         this.dataFile = new File(dataDirectory, "PlayerInfo.db");
     }
 
+    private final FindPlayer main;
     private MySQL_ConfigInfo config;
     private Connection connection;
     private boolean isReady = false;
@@ -48,7 +59,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
                 return;
             }
         } catch(SQLException e) {
-            Helpers.logger.warning("Error checking " + whichSQL + " connection. " + e.getMessage());
+            main.getLogger().warning("Error checking " + whichSQL + " connection: " + e.getMessage());
             return;
         }
 
@@ -94,7 +105,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
                     config.password);
             }
         } catch(Exception e) {
-            Helpers.logger.warning("Unable to open " + whichSQL + ". " + e.getMessage());
+            main.getLogger().warning("Unable to open " + whichSQL + ". " + e.getMessage());
             return;
         }
 
@@ -103,7 +114,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
             final Statement statement = connection.createStatement();
             statement.execute(createStatement);
         } catch(SQLException e) {
-            Helpers.logger.warning("Error executing " + whichSQL + " query. " + e.getMessage());
+            main.getLogger().warning("Error executing " + whichSQL + " query. " + e.getMessage());
             return;
         }
 
@@ -151,7 +162,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
             final Statement query = connection.createStatement();
             query.execute("DELETE FROM playerLocations");
         } catch(SQLException e) {
-            Helpers.logger.warning("Error deleting from " + whichSQL + ". " + e.getMessage());
+            main.getLogger().warning("Error deleting from " + whichSQL + ". " + e.getMessage());
         }
     }
 
@@ -213,7 +224,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
 
             return getPlayerInfoFromQuery(result);
         } catch(SQLException e) {
-            Helpers.logger.warning("Error querying " + whichSQL + ". " + e.getMessage());
+            main.getLogger().warning("Error querying " + whichSQL + ". " + e.getMessage());
         }
 
         return null;
@@ -232,7 +243,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
                 this.mapping.put(psi.userId, psi);
             }
         } catch(SQLException e) {
-            Helpers.logger.warning("Unable to query " + whichSQL + "." + e.getMessage());
+            main.getLogger().warning("Unable to query " + whichSQL + "." + e.getMessage());
             if(writer != null) {
                 writer.doLoop = false;
             }
@@ -247,7 +258,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
         }
 
         if(useDebug) {
-            Helpers.logger.info(
+            main.getLogger().info(
                 "items count: " + mapping.size() + ", name mappings: " + nameMappings.size());
         }
     }
@@ -308,13 +319,13 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
             try {
                 statement = connection.prepareStatement(cmdText);
             } catch(SQLException e) {
-                Helpers.logger.warning("Error creating SQL writer statement. " + e.getMessage());
+                main.getLogger().warning("Error creating SQL writer statement. " + e.getMessage());
                 return;
             }
 
             isReady = true;
             if(useDebug) {
-                Helpers.logger.info("sql ready for updates");
+                main.getLogger().info("sql ready for updates");
             }
 
             try {
@@ -329,7 +340,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
                 }
                 // 	--------------------- end writer loop ----------------------
             } catch(SQLException | InterruptedException e) {
-                Helpers.logger.warning("Error updating SQL (writer queue). " + e.getMessage());
+                main.getLogger().warning("Error updating SQL (writer queue). " + e.getMessage());
             }
         } // end run
     }
@@ -337,7 +348,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
     private void processItem(final PlayerStoreInfo item, final PreparedStatement statement)
         throws SQLException {
         if(useDebug) {
-            Helpers.logger.info("writer queue has work");
+            main.getLogger().info("writer queue has work");
         }
 
         // has a valid item needing to write to SQL
@@ -369,7 +380,7 @@ public class PlayerCacheSQL extends PlayerCacheBase implements IPlayerCache {
 
         statement.execute();
         if(useDebug) {
-            Helpers.logger.info("inserted or updated entry to sql");
+            main.getLogger().info("inserted or updated entry to sql");
         }
     }
 

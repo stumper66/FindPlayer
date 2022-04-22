@@ -13,7 +13,6 @@ import me.stumper66.findplayer.data.PlayerCacheSQL;
 import me.stumper66.findplayer.data.PlayerStoreInfo;
 import me.stumper66.findplayer.integration.PlaceholderApiHandler;
 import me.stumper66.findplayer.integration.WorldGuardHandler;
-import me.stumper66.findplayer.misc.Helpers;
 import me.stumper66.findplayer.misc.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -25,7 +24,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,6 +38,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
     private String wgRegionPostformedString;
     public FilterOption defaultFilter;
     public PaperCommandManager commandManager;
+    public final ConfigMigrator configMigrator = new ConfigMigrator(this);
 
     @Override
     public void onEnable() {
@@ -59,7 +58,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
             new PlaceholderApiHandler(this).register();
         }
 
-        Helpers.logger.info("Start-up complete.");
+        getLogger().info("Start-up complete.");
     }
 
     private void registerCommands() {
@@ -79,10 +78,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
             playerCache.close();
         }
 
-        final PluginDescriptionFile pdf = this.getDescription();
-        if(this.useDebug) {
-            Helpers.logger.info(pdf.getName() + " has been disabled");
-        }
+        getLogger().info("Shut-down complete.");
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
@@ -134,7 +130,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
     }
 
     public void processConfig(final CommandSender sender) {
-        ConfigMigrator.checkConfigVersion(this);
+        configMigrator.checkConfigVersion();
 
         this.useDebug = getConfig().getBoolean("debug", false);
         final long writeTimeMs = getConfig().getLong("json-write-time-ms", 5000L);
@@ -157,20 +153,20 @@ public class FindPlayer extends JavaPlugin implements Listener {
                     sconfig.username = getConfig().getString("mysql-username");
                     sconfig.password = getConfig().getString("mysql-password");
 
-                    final PlayerCacheSQL mysql = new PlayerCacheSQL(sconfig, useDebug);
+                    final PlayerCacheSQL mysql = new PlayerCacheSQL(this, sconfig, useDebug);
                     playerCache = mysql;
                     mysql.openConnection();
                     break;
                 case "sqlite":
                     this.loggingType = LoggingType.SQLITE;
-                    final PlayerCacheSQL sqlite = new PlayerCacheSQL(this.getDataFolder(),
+                    final PlayerCacheSQL sqlite = new PlayerCacheSQL(this, this.getDataFolder(),
                         useDebug);
                     playerCache = sqlite;
                     sqlite.openConnection();
                     break;
                 case "json":
                     this.loggingType = LoggingType.JSON;
-                    playerCache = new PlayerCacheJson(this.getDataFolder(), writeTimeMs, useDebug);
+                    playerCache = new PlayerCacheJson(this, this.getDataFolder(), writeTimeMs, useDebug);
                     break;
                 default:
                     this.loggingType = LoggingType.NONE;
@@ -178,7 +174,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
             }
 
             if(this.useDebug) {
-                Helpers.logger.info("Using logging type of " + this.loggingType.toString());
+                getLogger().info("Using logging type of " + this.loggingType.toString());
             }
         } else {
             // is reload
@@ -233,8 +229,8 @@ public class FindPlayer extends JavaPlugin implements Listener {
         try {
             this.defaultFilter = FilterOption.valueOf(
                 getConfig().getString("default-name-filter", "ALL").toUpperCase());
-        } catch(Exception ignored) {
-            Helpers.logger.warning("Invalid value for default-name-filter");
+        } catch(IllegalArgumentException ignored) {
+            getLogger().severe("Invalid value for default-name-filter!");
         }
 
         this.wgRegionPostformedString = "";
@@ -286,7 +282,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
         String formedStr = str;
 
         for(final String key : v.keySet()) {
-            formedStr = Helpers.replaceIgnoreCase(formedStr, key, v.get(key));
+            formedStr = Utils.replaceIgnoreCase(formedStr, key, v.get(key));
         }
 
         return formedStr;
@@ -305,7 +301,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
         String formedStr = getConfig().getString("datetime-format", "");
 
         for(final String key : v.keySet()) {
-            formedStr = Helpers.replaceIgnoreCase(formedStr, key, v.get(key).toString());
+            formedStr = Utils.replaceIgnoreCase(formedStr, key, v.get(key).toString());
         }
 
         if(formedStr.isEmpty()) {
@@ -345,7 +341,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
         String formedStr = str;
 
         for(final String key : v.keySet()) {
-            formedStr = Helpers.replaceIgnoreCase(formedStr, key, v.get(key).toString());
+            formedStr = Utils.replaceIgnoreCase(formedStr, key, v.get(key).toString());
         }
 
         return MessageUtils.colorizeAll(formedStr);
