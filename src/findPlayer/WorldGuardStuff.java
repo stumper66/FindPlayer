@@ -13,37 +13,50 @@ import org.bukkit.World;
 import org.jetbrains.annotations.Nullable;
 
 public class WorldGuardStuff {
-	public static boolean CheckForWorldGuard() {
-		return Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
-	}
 
-	@Nullable
-	public static String GetWorldGuardRegionsForLocation(final Location l) {
-		final World world = l.getWorld();
-		if (world == null) return null;
+    public static boolean CheckForWorldGuard() {
+        return Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
+    }
 
-		final com.sk89q.worldedit.world.World wg_world = BukkitAdapter.adapt(world);
-		final BlockVector3 position = BlockVector3.at(l.getBlockX(), l.getBlockY(), l.getBlockZ());
-		final RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-		final RegionManager regions = container.get(wg_world);
-		if (regions == null) return null;
-		
-		final StringBuilder sb = new StringBuilder();
-		
-		for (final ProtectedRegion region : regions.getApplicableRegions(position)) {
-			if (sb.length() > 100) return null;
-			if (sb.length() > 0) sb.append(", ");
-			final String name = region.getId();
-			sb.append(name);
-		}
-		
-		if (sb.length() > 100) {
-			sb.setLength(97);
-			sb.append("...");
-		}
-		
-		if (sb.length() > 0) return sb.toString();
-		else return null;
-	}
+    @Nullable
+    public static String GetWorldGuardRegionsForLocation(final Location l) {
+        final World world = l.getWorld();
+        if(world == null) {
+            return null;
+        }
+
+        final com.sk89q.worldedit.world.World wg_world = BukkitAdapter.adapt(world);
+        final BlockVector3 position = BlockVector3.at(l.getBlockX(), l.getBlockY(), l.getBlockZ());
+        final RegionContainer container = WorldGuard.getInstance().getPlatform()
+            .getRegionContainer();
+        final RegionManager regions = container.get(wg_world);
+        if(regions == null) {
+            return null;
+        }
+
+        final StringBuilder sb = new StringBuilder();
+
+        for(final ProtectedRegion region : regions.getApplicableRegions(position)) {
+            if(sb.length() > 100) {
+                return null;
+            }
+            if(sb.length() > 0) {
+                sb.append(", ");
+            }
+            final String name = region.getId();
+            sb.append(name);
+        }
+
+        if(sb.length() > 100) {
+            sb.setLength(97);
+            sb.append("...");
+        }
+
+        if(sb.length() > 0) {
+            return sb.toString();
+        } else {
+            return null;
+        }
+    }
 
 }

@@ -18,109 +18,127 @@ import com.google.gson.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
 
 public class PlayerCache_Json extends PlayerCache_Base implements IPlayerCache {
-	public PlayerCache_Json(final File dataDirectory, long writeTimeMs, final boolean debugEnabled) {
-		this.useDebug = debugEnabled;
-		final GsonBuilder builder = new GsonBuilder();
-		builder.registerTypeAdapter(LocalDateTime.class, LocalDateTimeJsonAdapter.INSTANCE);
-		gs = builder.create();
 
-		this.dataFile = new File(dataDirectory, "PlayerInfo.json");
-	    timer = new Timer();
-		final TimerTask timerTask = new TimerTask() {
+    public PlayerCache_Json(final File dataDirectory, long writeTimeMs,
+        final boolean debugEnabled) {
+        this.useDebug = debugEnabled;
+        final GsonBuilder builder = new GsonBuilder();
+        builder.registerTypeAdapter(LocalDateTime.class, LocalDateTimeJsonAdapter.INSTANCE);
+        gs = builder.create();
 
-			@Override
-			public void run() {
-				runWriter();
-			}
-		};
+        this.dataFile = new File(dataDirectory, "PlayerInfo.json");
+        timer = new Timer();
+        final TimerTask timerTask = new TimerTask() {
 
-		timer.schedule(timerTask, 1000L, writeTimeMs);
-	}
-	
-	private boolean _isDirty = false; // used for flat file writes
-	private final Gson gs;
-	private boolean useDebug;
-	private static final Object lockObj = new Object();
-	private final Timer timer;
+            @Override
+            public void run() {
+                runWriter();
+            }
+        };
 
-	private void runWriter(){
-		synchronized(lockObj){
-			if (!_isDirty) return;
-		}
+        timer.schedule(timerTask, 1000L, writeTimeMs);
+    }
 
-		if (useDebug) Helpers.logger.info("writer queue has work");
+    private boolean _isDirty = false; // used for flat file writes
+    private final Gson gs;
+    private boolean useDebug;
+    private static final Object lockObj = new Object();
+    private final Timer timer;
 
-		writeToDisk();
-	}
+    private void runWriter() {
+        synchronized(lockObj) {
+            if(!_isDirty) {
+                return;
+            }
+        }
 
-	public void close() {
-		timer.cancel();
-		if (!_isDirty) return;
+        if(useDebug) {
+            Helpers.logger.info("writer queue has work");
+        }
 
-		writeToDisk();
-	}
+        writeToDisk();
+    }
 
-	public void updateDebug(final boolean useDebug) {
-		this.useDebug = useDebug;
-	}
+    public void close() {
+        timer.cancel();
+        if(!_isDirty) {
+            return;
+        }
 
-	public void purgeData() {
-		synchronized(lockObj) {
-			this.mapping.clear();
-			this.nameMappings.clear();
-			this._isDirty = true;
-		}
-	}
-		
-	public void addOrUpdatePlayerInfo(@NotNull final PlayerStoreInfo psi) {
-		psi.lastOnline = LocalDateTime.now();
+        writeToDisk();
+    }
 
-		synchronized(lockObj) {
-			this.mapping.put(psi.userId, psi);
-			this.nameMappings.put(psi.playerName, psi.userId);
-			this._isDirty = true;
-		}
-	}
-			
-	public void writeToDisk() {
-		
-		synchronized(lockObj) {
-			final String fileJson = gs.toJson(this.mapping);
+    public void updateDebug(final boolean useDebug) {
+        this.useDebug = useDebug;
+    }
 
-			try (Writer fr = new OutputStreamWriter(new FileOutputStream(this.dataFile), StandardCharsets.UTF_8)) {
-				fr.write(fileJson);
-				this._isDirty = false;
-			} catch (IOException e) {
-				Helpers.logger.warning("Error writing to disk. " + e.getMessage());
-			}
-			this._isDirty = false;
-		} // end lock
-	}
-	
-	public void populateData() {
-		if (!this.dataFile.exists()) return;
-		
-		if (useDebug) Helpers.logger.info("about to read: " + dataFile.getAbsolutePath());
-		String jsonStr;
-		
-		try {
-			jsonStr = new String(Files.readAllBytes(Paths.get(dataFile.getPath())), StandardCharsets.UTF_8);
-		} catch (IOException e) {
-			Helpers.logger.warning("error reading json file. " + e.getMessage());
-			return;
-		}
-		
-		final Type useType = new TypeToken<HashMap<UUID, PlayerStoreInfo>>(){
-			@SuppressWarnings("unused")
-			private static final long serialVersionUID = 1L;}.getType();
-		this.mapping = gs.fromJson(jsonStr, useType);
+    public void purgeData() {
+        synchronized(lockObj) {
+            this.mapping.clear();
+            this.nameMappings.clear();
+            this._isDirty = true;
+        }
+    }
 
-		for (final Map.Entry<UUID, PlayerStoreInfo> entry : this.mapping.entrySet()) {
-			final UUID k = entry.getKey();
-			final PlayerStoreInfo v = entry.getValue();
-			nameMappings.put(v.playerName, k);
-		}
+    public void addOrUpdatePlayerInfo(@NotNull final PlayerStoreInfo psi) {
+        psi.lastOnline = LocalDateTime.now();
 
-		if (useDebug) Helpers.logger.info("items count: " + mapping.size() + ", name mappings: " + nameMappings.size());
-	}
+        synchronized(lockObj) {
+            this.mapping.put(psi.userId, psi);
+            this.nameMappings.put(psi.playerName, psi.userId);
+            this._isDirty = true;
+        }
+    }
+
+    public void writeToDisk() {
+
+        synchronized(lockObj) {
+            final String fileJson = gs.toJson(this.mapping);
+
+            try(Writer fr = new OutputStreamWriter(new FileOutputStream(this.dataFile),
+                StandardCharsets.UTF_8)) {
+                fr.write(fileJson);
+                this._isDirty = false;
+            } catch(IOException e) {
+                Helpers.logger.warning("Error writing to disk. " + e.getMessage());
+            }
+            this._isDirty = false;
+        } // end lock
+    }
+
+    public void populateData() {
+        if(!this.dataFile.exists()) {
+            return;
+        }
+
+        if(useDebug) {
+            Helpers.logger.info("about to read: " + dataFile.getAbsolutePath());
+        }
+        String jsonStr;
+
+        try {
+            jsonStr = new String(Files.readAllBytes(Paths.get(dataFile.getPath())),
+                StandardCharsets.UTF_8);
+        } catch(IOException e) {
+            Helpers.logger.warning("error reading json file. " + e.getMessage());
+            return;
+        }
+
+        final Type useType = new TypeToken<HashMap<UUID, PlayerStoreInfo>>() {
+            @SuppressWarnings("unused")
+            private static final long serialVersionUID = 1L;
+        }.getType();
+        this.mapping = gs.fromJson(jsonStr, useType);
+
+        for(final Map.Entry<UUID, PlayerStoreInfo> entry : this.mapping.entrySet()) {
+            final UUID k = entry.getKey();
+            final PlayerStoreInfo v = entry.getValue();
+            nameMappings.put(v.playerName, k);
+        }
+
+        if(useDebug) {
+            Helpers.logger.info(
+                "items count: " + mapping.size() + ", name mappings: " + nameMappings.size());
+        }
+    }
 }
