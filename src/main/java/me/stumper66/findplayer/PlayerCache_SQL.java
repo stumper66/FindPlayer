@@ -1,4 +1,4 @@
-package findPlayer;
+package me.stumper66.findplayer;
 
 import org.jetbrains.annotations.NotNull;
 

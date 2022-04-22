@@ -1,4 +1,4 @@
-package findPlayer;
+package me.stumper66.findplayer;
 
 import me.lokka30.microlib.MicroLogger;
 import org.jetbrains.annotations.NotNull;

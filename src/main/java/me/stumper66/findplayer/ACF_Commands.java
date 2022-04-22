@@ -1,4 +1,4 @@
-package findPlayer;
+package me.stumper66.findplayer;
 
 import co.aikar.commands.*;
 import co.aikar.commands.annotation.*;

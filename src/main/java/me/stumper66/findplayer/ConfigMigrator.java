@@ -1,4 +1,4 @@
-package findPlayer;
+package me.stumper66.findplayer;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.util.FileUtil;

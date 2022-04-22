@@ -1,4 +1,4 @@
-package findPlayer;
+package me.stumper66.findplayer;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;

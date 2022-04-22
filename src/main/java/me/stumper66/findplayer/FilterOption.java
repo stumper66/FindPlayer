@@ -1,4 +1,4 @@
-package findPlayer;
+package me.stumper66.findplayer;
 
 public enum FilterOption {
     ALL,

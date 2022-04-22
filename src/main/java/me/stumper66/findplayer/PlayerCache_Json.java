@@ -1,4 +1,4 @@
-package findPlayer;
+package me.stumper66.findplayer;
 
 import java.io.File;
 import java.io.FileOutputStream;
