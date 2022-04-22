@@ -1,16 +1,18 @@
 package me.stumper66.findplayer;
 
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.util.FileUtil;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import javax.annotation.Nonnull;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import javax.annotation.Nonnull;
+import org.bukkit.util.FileUtil;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class ConfigMigrator {
 

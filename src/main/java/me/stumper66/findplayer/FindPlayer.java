@@ -1,23 +1,21 @@
 package me.stumper66.findplayer;
 
+import co.aikar.commands.PaperCommandManager;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-
-import co.aikar.commands.PaperCommandManager;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.plugin.java.JavaPlugin;
-
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginDescriptionFile;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 public class FindPlayer extends JavaPlugin implements Listener {
@@ -74,7 +72,7 @@ public class FindPlayer extends JavaPlugin implements Listener {
 
     private void registerCommands() {
         this.commandManager = new PaperCommandManager(this);
-        this.commandManager.registerCommand(new ACF_Commands(this));
+        this.commandManager.registerCommand(new AcfCommands(this));
     }
 
     @Override

@@ -1,7 +1,20 @@
 package me.stumper66.findplayer;
 
-import co.aikar.commands.*;
-import co.aikar.commands.annotation.*;
+import co.aikar.commands.BaseCommand;
+import co.aikar.commands.BukkitCommandCompletionContext;
+import co.aikar.commands.CommandCompletions;
+import co.aikar.commands.CommandHelp;
+import co.aikar.commands.annotation.CatchUnknown;
+import co.aikar.commands.annotation.CommandAlias;
+import co.aikar.commands.annotation.CommandCompletion;
+import co.aikar.commands.annotation.CommandPermission;
+import co.aikar.commands.annotation.HelpCommand;
+import co.aikar.commands.annotation.Subcommand;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -9,12 +22,10 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
-
 @CommandAlias("fp|findp")
-public class ACF_Commands extends BaseCommand {
+public class AcfCommands extends BaseCommand {
 
-    public ACF_Commands(final FindPlayer main) {
+    public AcfCommands(final FindPlayer main) {
         this.main = main;
         this.userFilterOptions = new TreeMap<>();
         registerCommandCompletions();
@@ -24,14 +35,14 @@ public class ACF_Commands extends BaseCommand {
     private final Map<UUID, FilterOption> userFilterOptions;
 
     @CatchUnknown
-    @ACF_Method
+    @AcfMethod
     public void onUnknown(final CommandSender sender) {
         sender.sendMessage("you have entered an unknown command");
     }
 
     @Subcommand("reload")
     @CommandPermission("FindPlayer.reload")
-    @ACF_Method
+    @AcfMethod
     public void onReload(final CommandSender sender) {
         main.saveDefaultConfig();
         main.reloadConfig();
@@ -42,7 +53,7 @@ public class ACF_Commands extends BaseCommand {
 
     @Subcommand("purge")
     @CommandPermission("FindPlayer.purge")
-    @ACF_Method
+    @AcfMethod
     public void onPurge(final CommandSender sender) {
         main.playerCache.purgeData();
         sender.sendMessage(ChatColor.YELLOW + "Purged all cached data.");
@@ -50,7 +61,7 @@ public class ACF_Commands extends BaseCommand {
 
     @HelpCommand
     @Subcommand("help")
-    @ACF_Method
+    @AcfMethod
     public static void onHelp(final CommandSender sender, final CommandHelp help) {
         //sendMsg(sender, heading("FindPlayer Help"));
         //final ChatColor g = ChatColor.GREEN;
@@ -62,7 +73,7 @@ public class ACF_Commands extends BaseCommand {
     @Subcommand("filter")
     @CommandPermission("FindPlayer.player")
     @CommandCompletion("all|online|offline")
-    @ACF_Method
+    @AcfMethod
     public void onFilter(final @NotNull CommandSender sender, final String[] args) {
         if(!(sender instanceof Player) && !(sender instanceof ConsoleCommandSender)) {
             sender.sendMessage(
@@ -116,14 +127,14 @@ public class ACF_Commands extends BaseCommand {
     @Subcommand("player")
     @CommandPermission("FindPlayer.player")
     @CommandCompletion("@players")
-    @ACF_Method
+    @AcfMethod
     public void getPlayer(final CommandSender sender, final String playername) {
         final String sendMsg = main.getMessageForPlayer(playername);
         sender.sendMessage(sendMsg);
     }
 
     @Subcommand("info")
-    @ACF_Method
+    @AcfMethod
     public void onInfo(final CommandSender sender) {
         sender.sendMessage("FindPlayer, version " + main.getDescription().getVersion());
         sender.sendMessage("Current logging mode: " + main.loggingType);
